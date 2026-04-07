@@ -2,3 +2,5 @@ solver/venv/
 node_modules/ 
 .env.local 
 .next/ 
+__pycache__/ 
+"*.pyc" 

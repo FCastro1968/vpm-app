@@ -25,19 +25,20 @@ const STATUS_COLORS: Record<string, string> = {
 
 function phaseStatus(phaseNumber: number, projectStatus: string): 'complete' | 'active' | 'locked' {
   const statusOrder = [
-    'DRAFT',
-    'SCOPE_COMPLETE',
-    'FRAMEWORK_COMPLETE',
-    'SURVEY_OPEN',
-    'SURVEY_CLOSED',
-    'UTILITIES_DERIVED',
-    'MODEL_RUN',
-    'COMPLETE',
+    'DRAFT',              // phase 1 active
+    'SCOPE_COMPLETE',     // phase 2 unlocked
+    'FRAMEWORK_COMPLETE', // phase 3 unlocked
+    'SURVEY_OPEN',        // phase 4 unlocked
+    'SURVEY_CLOSED',      // phase 4 unlocked
+    'UTILITIES_DERIVED',  // phase 5 unlocked
+    'MODEL_RUN',          // phase 6 unlocked
+    'COMPLETE',           // all complete
   ]
   const currentIndex = statusOrder.indexOf(projectStatus)
 
-  if (phaseNumber < currentIndex) return 'complete'
-  if (phaseNumber === currentIndex) return 'active'
+  // Phase N is unlocked when currentIndex >= N - 1
+  if (currentIndex >= phaseNumber) return 'complete'
+  if (currentIndex >= phaseNumber - 1) return 'active'
   return 'locked'
 }
 

@@ -71,8 +71,15 @@ def compute_value_index(raw_score, raw_score_base, raw_score_max):
 
 def build_value_index_scores(attribute_weights, level_utilities, attribute_levels,
                               benchmark_assignments, target_assignments):
-    base_assignments = {attr: levels[0] for attr, levels in attribute_levels.items()}
-    max_assignments  = {attr: levels[-1] for attr, levels in attribute_levels.items()}
+base_assignments = {
+    attr: min(levels, key=lambda lid: level_utilities.get(lid, 0))
+    for attr, levels in attribute_levels.items()
+}
+max_assignments = {
+    attr: max(levels, key=lambda lid: level_utilities.get(lid, 0))
+    for attr, levels in attribute_levels.items()
+}
+
     raw_base = compute_raw_score(base_assignments, attribute_weights, level_utilities)
     raw_max  = compute_raw_score(max_assignments,  attribute_weights, level_utilities)
     bench_scores  = [compute_value_index(compute_raw_score(a, attribute_weights, level_utilities), raw_base, raw_max) for a in benchmark_assignments]

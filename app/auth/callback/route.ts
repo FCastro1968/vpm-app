@@ -1,21 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createServerClient } from '@supabase/ssr'
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
   const type = searchParams.get('type')
 
-  if (code) {
-    const supabase = await createClient()
-    await supabase.auth.exchangeCodeForSession(code)
+  const redirectTo = type === 'recovery'
+    ? `${origin}/login?mode=reset`
+    : `${origin}/dashboard`
+
+  if (!code) {
+    return NextResponse.redirect(redirectTo)
   }
 
-  // Password recovery — send to login page in reset mode
-  if (type === 'recovery') {
-    return NextResponse.redirect(`${origin}/login?mode=reset`)
-  }
+  // Build response first so we can attach cookies to it
+  const response = NextResponse.redirect(redirectTo)
 
-  // Magic link / email confirmation — send to dashboard
-  return NextResponse.redirect(`${origin}/dashboard`)
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
+
+  await supabase.auth.exchangeCodeForSession(code)
+
+  return response
 }

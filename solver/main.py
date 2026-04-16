@@ -184,7 +184,7 @@ def solve(req: SolverRequest):
         )
 
         # Run solver
-        result = run_solver(bench_scores, req.market_prices, req.market_share_weights)
+        result = run_solver(bench_scores, req.market_prices, req.market_share_weights, target_value_scores=target_scores)
 
         if not result['success']:
             return SolverResponse(success=False, error=result.get('error'))
@@ -335,4 +335,6 @@ def cr_flag_label(cr: float) -> str:
 # ============================================================
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    import os
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)

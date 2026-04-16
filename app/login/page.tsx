@@ -15,16 +15,19 @@ export default function LoginPage() {
   const router = useRouter()
   const supabase = createClient()
 
-  // Handle password reset token in URL hash
+  // Check for ?mode=reset (set by /auth/callback after PKCE code exchange)
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('mode') === 'reset') {
+      setMode('reset')
+      return
+    }
+    // Legacy: hash-based implicit flow fallback
     const hash = window.location.hash
     if (hash && hash.includes('access_token')) {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) setMode('reset')
-      })
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
         if (event === 'PASSWORD_RECOVERY') setMode('reset')
-        if (event === 'SIGNED_IN' && mode !== 'reset') router.push('/dashboard')
+        if (event === 'SIGNED_IN') router.push('/dashboard')
       })
       return () => subscription.unsubscribe()
     }
@@ -49,7 +52,7 @@ export default function LoginPage() {
     setError('')
     setMessage('')
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/login`,
+      redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
     })
     setLoading(false)
     if (error) {

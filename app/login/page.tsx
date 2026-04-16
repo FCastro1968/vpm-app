@@ -15,14 +15,31 @@ export default function LoginPage() {
   const router = useRouter()
   const supabase = createClient()
 
-  // Check for ?mode=reset (set by /auth/callback after PKCE code exchange)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
-    if (params.get('mode') === 'reset') {
+    const code = params.get('code')
+    const mode_param = params.get('mode')
+
+    // PKCE code in URL — exchange it client-side so the browser session is established
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+        if (!error) {
+          // Check if this was a recovery flow
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session?.user) setMode('reset')
+          })
+        }
+      })
+      return
+    }
+
+    // Already redirected here after server-side exchange
+    if (mode_param === 'reset') {
       setMode('reset')
       return
     }
-    // Legacy: hash-based implicit flow fallback
+
+    // Legacy: hash-based implicit flow
     const hash = window.location.hash
     if (hash && hash.includes('access_token')) {
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {

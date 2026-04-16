@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
 """
-Value Pricing Model™ — Solver Microservice
+Value Pricing Model - Solver Microservice
 FastAPI HTTP wrapper around solver.py
 Called by the Next.js backend for all Phase 4-5 computation.
 """
@@ -27,7 +28,7 @@ app = FastAPI(title="VPM Solver", version="0.1.0")
 # ============================================================
 
 class PriorityVectorRequest(BaseModel):
-    matrix: list[list[float]] = Field(..., description="n×n pairwise comparison matrix")
+    matrix: list[list[float]] = Field(..., description="n x n pairwise comparison matrix")
 
 class PriorityVectorResponse(BaseModel):
     weights: list[float]
@@ -36,7 +37,7 @@ class PriorityVectorResponse(BaseModel):
 
 
 class AggregateMatrixRequest(BaseModel):
-    matrices: list[list[list[float]]] = Field(..., description="One n×n matrix per respondent")
+    matrices: list[list[list[float]]] = Field(..., description="One n x n matrix per respondent")
 
 class AggregateMatrixResponse(BaseModel):
     aggregated_matrix: list[list[float]]
@@ -247,7 +248,7 @@ def solve(req: SolverRequest):
 def market_implied_weights(req: MarketImpliedWeightsRequest):
     """
     Single-stage diagnostic model: find attribute weights that minimize
-    weighted SSE against market prices (Tool 3 — Advanced Diagnostics).
+    weighted SSE against market prices (Tool 3 - Advanced Diagnostics).
     Attribute weights treated as free parameters alongside B and M.
     """
     from scipy.optimize import minimize as sp_minimize

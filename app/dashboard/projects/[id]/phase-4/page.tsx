@@ -480,6 +480,20 @@ export default function Phase4Page() {
     setAddingResp(true)
     setRosterError('')
     try {
+      // Dedup check — block if this email already has a DISTRIBUTED record for this project
+      const { data: existing } = await supabase
+        .from('respondent')
+        .select('id')
+        .eq('project_id', projectId)
+        .eq('email', newRespEmail.trim())
+        .eq('mode', 'DISTRIBUTED')
+        .limit(1)
+      if (existing && existing.length > 0) {
+        setRosterError(`${newRespEmail.trim()} is already in the respondent list.`)
+        setAddingResp(false)
+        return
+      }
+
       const { data, error } = await supabase
         .from('respondent')
         .insert({

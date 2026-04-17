@@ -271,21 +271,34 @@ export default function Phase2Page() {
       factors.map((f, i) => (i === factorIndex ? { ...f, levels: newLevels } : f))
     )
 
-    // Update benchmark and target assignments: clear deleted level, shift down higher ones
     const fKey = factor.id ?? `temp_${factor.display_order}`
 
-    function shiftOrders(prev: Assignments): Assignments {
+    // Benchmark assignments: { [fKey]: { [benchId]: order } }
+    setAssignments(prev => {
       const factorAssignments = prev[fKey] ?? {}
       const updated: Record<string, number> = {}
-      for (const [id, order] of Object.entries(factorAssignments)) {
+      for (const [benchId, order] of Object.entries(factorAssignments)) {
         if (order === removedOrder) continue
-        updated[id] = order > removedOrder ? order - 1 : order
+        updated[benchId] = order > removedOrder ? order - 1 : order
       }
       return { ...prev, [fKey]: updated }
-    }
+    })
 
-    setAssignments(shiftOrders)
-    setTargetAssignments(shiftOrders)
+    // Target assignments: { [targetId]: { [fKey]: order } }
+    setTargetAssignments(prev => {
+      const next = { ...prev }
+      for (const targetId of Object.keys(next)) {
+        const order = next[targetId][fKey]
+        if (order === undefined) continue
+        if (order === removedOrder) {
+          const { [fKey]: _, ...rest } = next[targetId]
+          next[targetId] = rest
+        } else if (order > removedOrder) {
+          next[targetId] = { ...next[targetId], [fKey]: order - 1 }
+        }
+      }
+      return next
+    })
   }
 
   function updateLevel(

@@ -6,7 +6,6 @@ import { useRouter, useParams } from 'next/navigation'
 
 type UseCaseType = 'NPI' | 'REPOSITION'
 type BenchmarkPriceBasis = 'LIST_PRICE' | 'AVERAGE_MARKET_PRICE' | 'CUSTOM'
-type ConfidenceTier = 'HIGH' | 'MODERATE' | 'LOW' | 'NOT_FOUND'
 
 interface TargetProduct {
   id?: string
@@ -21,35 +20,14 @@ interface Benchmark {
   name: string
   market_price: string
   market_share_pct: string
-  // AI assist state
-  aiSuggested?: boolean      // true = came from AI, pending acceptance
-  accepted?: boolean         // true = user kept it
-  shareEstimate?: number | null
-  shareConfidence?: ConfidenceTier
-  shareSource?: string | null
-  shareNote?: string | null
-  shareAiAssisted?: boolean
-  shareLoading?: boolean
+  aiSuggested?: boolean
+  accepted?: boolean
 }
 
 const BASIS_LABELS: Record<BenchmarkPriceBasis, string> = {
   LIST_PRICE: 'List Price',
   AVERAGE_MARKET_PRICE: 'Average Market Price',
   CUSTOM: 'Custom',
-}
-
-const CONFIDENCE_COLORS: Record<ConfidenceTier, string> = {
-  HIGH:      'bg-green-100 text-green-700',
-  MODERATE:  'bg-yellow-100 text-yellow-700',
-  LOW:       'bg-orange-100 text-orange-700',
-  NOT_FOUND: 'bg-gray-100 text-gray-500',
-}
-
-const CONFIDENCE_LABELS: Record<ConfidenceTier, string> = {
-  HIGH:      'High',
-  MODERATE:  'Moderate',
-  LOW:       'Low',
-  NOT_FOUND: 'Not found',
 }
 
 async function callAI(task: string, payload: object) {
@@ -123,7 +101,7 @@ export default function Phase1Page() {
 
       const { data: existingBenchmarks } = await supabase
         .from('benchmark')
-        .select('id, name, market_price, market_share_pct, market_share_source, market_share_confidence, market_share_ai_assisted')
+        .select('id, name, market_price, market_share_pct')
         .eq('project_id', projectId)
         .order('name')
 
@@ -132,9 +110,6 @@ export default function Phase1Page() {
           ...b,
           market_price: b.market_price?.toString() ?? '',
           market_share_pct: b.market_share_pct?.toString() ?? '',
-          shareConfidence: (b.market_share_confidence as ConfidenceTier) ?? undefined,
-          shareSource: b.market_share_source ?? undefined,
-          shareAiAssisted: b.market_share_ai_assisted ?? false,
         })))
       }
 
@@ -176,14 +151,6 @@ export default function Phase1Page() {
 
   function acceptSuggestion(index: number) {
     setBenchmarks(benchmarks.map((b, i) => i === index ? { ...b, accepted: true } : b))
-    // Apply share estimate if available
-    const b = benchmarks[index]
-    if (b.shareEstimate != null && !b.market_share_pct) {
-      setBenchmarks(prev => prev.map((bm, i) => i === index
-        ? { ...bm, accepted: true, market_share_pct: b.shareEstimate!.toString() }
-        : bm
-      ))
-    }
   }
 
   function dismissSuggestion(index: number) {
@@ -214,7 +181,6 @@ export default function Phase1Page() {
         market_share_pct: '',
         aiSuggested: true,
         accepted: false,
-        shareLoading: false,
       }))
 
       setBenchmarks([...existing, ...newSuggestions])
@@ -227,75 +193,6 @@ export default function Phase1Page() {
   }
 
   // ── AI: Estimate market shares ────────────────────────────────────────────
-
-  async function estimateAllShares(benchList: Benchmark[]) {
-    const anchor = categoryAnchor || targets[0]?.name || ''
-    const toEstimate = benchList.filter(b => b.aiSuggested && b.name.trim())
-    if (toEstimate.length === 0) return
-
-    // Mark all as loading
-    setBenchmarks(prev => prev.map(bm =>
-      toEstimate.some(b => b.name === bm.name) ? { ...bm, shareLoading: true } : bm
-    ))
-
-    try {
-      const { results } = await callAI('estimate_market_share', {
-        benchmark_names: toEstimate.map(b => b.name),
-        category_anchor: anchor,
-        geography: geoScope || 'Global',
-      })
-
-      setBenchmarks(prev => prev.map(bm => {
-        const idx = toEstimate.findIndex(b => b.name === bm.name)
-        if (idx === -1) return bm
-        const result = results[idx]
-        if (!result) return { ...bm, shareLoading: false, shareConfidence: 'NOT_FOUND' as ConfidenceTier }
-        return {
-          ...bm,
-          shareLoading: false,
-          shareEstimate: result.estimate,
-          shareConfidence: result.confidence as ConfidenceTier,
-          shareSource: result.source,
-          shareNote: result.note,
-          shareAiAssisted: true,
-        }
-      }))
-    } catch {
-      setBenchmarks(prev => prev.map(bm =>
-        toEstimate.some(b => b.name === bm.name)
-          ? { ...bm, shareLoading: false, shareConfidence: 'NOT_FOUND' as ConfidenceTier }
-          : bm
-      ))
-    }
-  }
-
-  async function estimateSingleShare(index: number) {
-    const b = benchmarks[index]
-    if (!b.name.trim()) return
-    const anchor = categoryAnchor || targets[0]?.name || ''
-
-    setBenchmarks(prev => prev.map((bm, i) => i === index ? { ...bm, shareLoading: true } : bm))
-    try {
-      const { results } = await callAI('estimate_market_share', {
-        benchmark_names: [b.name],
-        category_anchor: anchor,
-        geography: geoScope || 'Global',
-      })
-      const result = results[0]
-      setBenchmarks(prev => prev.map((bm, i) => i === index ? {
-        ...bm,
-        shareLoading: false,
-        shareEstimate: result?.estimate ?? null,
-        shareConfidence: (result?.confidence ?? 'NOT_FOUND') as ConfidenceTier,
-        shareSource: result?.source ?? null,
-        shareNote: result?.note ?? null,
-        shareAiAssisted: true,
-        market_share_pct: result?.estimate != null ? result.estimate.toString() : bm.market_share_pct,
-      } : bm))
-    } catch {
-      setBenchmarks(prev => prev.map((bm, i) => i === index ? { ...bm, shareLoading: false } : bm))
-    }
-  }
 
   // ── Validation + Save ─────────────────────────────────────────────────────
 
@@ -358,9 +255,6 @@ export default function Phase1Page() {
           name: bench.name.trim(),
           market_price: Number(bench.market_price),
           market_share_pct: bench.market_share_pct ? Number(bench.market_share_pct) : null,
-          market_share_confidence: bench.shareConfidence ?? null,
-          market_share_source: bench.shareSource ?? null,
-          market_share_ai_assisted: bench.shareAiAssisted ?? false,
           included_in_regression: true,
         }
         if (bench.id) {
@@ -598,21 +492,6 @@ export default function Phase1Page() {
               )}
             </button>
             {benchmarks.some(b => b.name.trim()) && (
-              <button
-                onClick={() => estimateAllShares(benchmarks)}
-                disabled={benchmarks.some(b => b.shareLoading)}
-                className="px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-md hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2 border border-gray-300"
-              >
-                {benchmarks.some(b => b.shareLoading) ? (
-                  <>
-                    <span className="inline-block w-3 h-3 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
-                    Estimating...
-                  </>
-                ) : (
-                  '✦ Estimate Market Shares'
-                )}
-              </button>
-            )}
             <span className="text-xs text-gray-400">AI-suggested products will appear below for review</span>
           </div>
           {aiError && <div className="mt-2 text-xs text-red-600">{aiError}</div>}
@@ -692,32 +571,9 @@ export default function Phase1Page() {
                         className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
-                    {/* Share estimate / actions */}
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      {bench.shareLoading ? (
-                        <span className="text-xs text-gray-400">Estimating...</span>
-                      ) : bench.shareConfidence ? (
-                        <div className="flex items-center gap-1">
-                          {bench.shareAiAssisted && (
-                            <span className="text-xs px-1 py-0.5 rounded bg-blue-50 text-blue-400 font-medium">✦ AI</span>
-                          )}
-                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${CONFIDENCE_COLORS[bench.shareConfidence]}`}>
-                            {CONFIDENCE_LABELS[bench.shareConfidence]}
-                          </span>
-                          {bench.shareEstimate != null && (
-                            <span className="text-xs text-gray-500">{bench.shareEstimate}%</span>
-                          )}
-                          {bench.shareSource && (
-                            <span className="text-xs text-gray-400" title={bench.shareSource}>ⓘ</span>
-                          )}
-                        </div>
-                      ) : bench.name.trim() && categoryAnchor.trim() ? (
-                        <button onClick={() => estimateSingleShare(i)} className="text-xs text-blue-600 hover:text-blue-700">
-                          ✦ Estimate
-                        </button>
-                      ) : null}
+                    <div className="flex items-center justify-end">
                       {!isPending && (
-                        <button onClick={() => removeBenchmark(i)} className="text-gray-300 hover:text-red-400 text-lg leading-none ml-auto">
+                        <button onClick={() => removeBenchmark(i)} className="text-gray-300 hover:text-red-400 text-lg leading-none">
                           ×
                         </button>
                       )}

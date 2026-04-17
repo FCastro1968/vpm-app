@@ -219,9 +219,6 @@ export default function Phase1Page() {
 
       setBenchmarks([...existing, ...newSuggestions])
 
-      // Kick off market share estimation for each suggestion in the background
-      estimateAllShares([...existing, ...newSuggestions])
-
     } catch (err: any) {
       setAiError(err.message ?? 'Failed to generate suggestions')
     } finally {
@@ -585,7 +582,7 @@ export default function Phase1Page() {
             rows={2}
             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 resize-none"
           />
-          <div className="mt-2 flex items-center gap-3">
+          <div className="mt-2 flex items-center gap-3 flex-wrap">
             <button
               onClick={handleGenerateBenchmarks}
               disabled={generatingBenchmarks || !categoryAnchor.trim()}
@@ -600,6 +597,22 @@ export default function Phase1Page() {
                 '✦ Generate Market Reference Set'
               )}
             </button>
+            {benchmarks.some(b => b.name.trim()) && (
+              <button
+                onClick={() => estimateAllShares(benchmarks)}
+                disabled={benchmarks.some(b => b.shareLoading)}
+                className="px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-md hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2 border border-gray-300"
+              >
+                {benchmarks.some(b => b.shareLoading) ? (
+                  <>
+                    <span className="inline-block w-3 h-3 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
+                    Estimating...
+                  </>
+                ) : (
+                  '✦ Estimate Market Shares'
+                )}
+              </button>
+            )}
             <span className="text-xs text-gray-400">AI-suggested products will appear below for review</span>
           </div>
           {aiError && <div className="mt-2 text-xs text-red-600">{aiError}</div>}

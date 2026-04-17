@@ -25,6 +25,7 @@ interface DistributedRespondent {
   role: string | null
   token: string
   submitted_at: string | null
+  survey_started_at: string | null
 }
 
 interface Respondent {
@@ -226,7 +227,7 @@ export default function Phase4Page() {
       // Load distributed respondents for the management panel
       const { data: distData } = await supabase
         .from('respondent')
-        .select('id, name, email, role, token, submitted_at')
+        .select('id, name, email, role, token, submitted_at, survey_started_at')
         .eq('project_id', projectId)
         .eq('mode', 'DISTRIBUTED')
         .order('created_at')
@@ -504,7 +505,7 @@ export default function Phase4Page() {
           mode:       'DISTRIBUTED',
           included:   true,
         })
-        .select('id, name, email, role, token, submitted_at')
+        .select('id, name, email, role, token, submitted_at, survey_started_at')
         .single()
       if (error) throw error
       setDistRespondents(prev => [...prev, data])
@@ -647,6 +648,11 @@ export default function Phase4Page() {
                             }`}>
                               {r.submitted_at ? 'Submitted' : 'Awaiting'}
                             </span>
+                            {r.submitted_at && r.survey_started_at && (() => {
+                              const mins = Math.round((new Date(r.submitted_at).getTime() - new Date(r.survey_started_at).getTime()) / 60000)
+                              const label = mins < 1 ? '< 1 min' : mins < 60 ? `${mins} min` : `${Math.floor(mins / 60)}h ${mins % 60}m`
+                              return <span className="text-xs text-gray-400">{label}</span>
+                            })()}
                             <button
                               onClick={() => copyLink(r.token)}
                               className="text-xs text-blue-600 hover:text-blue-700"

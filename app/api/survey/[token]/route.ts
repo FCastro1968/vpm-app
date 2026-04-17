@@ -10,7 +10,7 @@ async function validateToken(token: string) {
   const supabase = createServiceClient()
   const { data: respondent } = await supabase
     .from('respondent')
-    .select('id, name, project_id, submitted_at, mode')
+    .select('id, name, project_id, submitted_at, survey_started_at, mode')
     .eq('token', token)
     .eq('mode', 'DISTRIBUTED')
     .maybeSingle()
@@ -97,6 +97,14 @@ export async function POST(request: NextRequest, { params }: { params: Params })
   }
 
   const { comparison_type, item_a_id, item_b_id, score, direction } = await request.json()
+
+  // Start the clock on first response save (Q1 → Q2 transition)
+  if (!respondent.survey_started_at) {
+    await supabase
+      .from('respondent')
+      .update({ survey_started_at: new Date().toISOString() })
+      .eq('id', respondent.id)
+  }
 
   // Delete-then-insert pattern (consistent with rest of app)
   await supabase

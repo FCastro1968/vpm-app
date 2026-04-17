@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useParams } from 'next/navigation'
+import { HelpTip } from '@/app/components/HelpTip'
 
 interface Level {
   id?: string
@@ -865,18 +866,24 @@ export default function Phase2Page() {
 
                 {/* Ordinal / Nominal badge — top right corner */}
                 {!isPending && (
-                  <button
-                    type="button"
-                    title={factor.is_ordinal ? 'Ordinal — levels have a natural order. Click to set Nominal.' : 'Nominal — levels are unordered categories. Click to set Ordinal.'}
-                    onClick={() => updateFactor(fi, 'is_ordinal', !factor.is_ordinal)}
-                    className={`absolute top-3 right-3 text-xs px-2 py-0.5 rounded font-medium border ${
-                      factor.is_ordinal
-                        ? 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'
-                        : 'bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100'
-                    }`}
-                  >
-                    {factor.is_ordinal ? 'Ordinal' : 'Nominal'}
-                  </button>
+                  <div className="absolute top-3 right-3 flex items-center gap-1">
+                    <HelpTip
+                      content="Ordinal factors have levels that rank from low to high (e.g. Warranty: 1yr → 3yr → 5yr). Nominal factors have levels that differ in kind, not degree (e.g. Brand). Only ordinal factors count toward the coverage diagnostic."
+                      position="below"
+                      width="w-80"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => updateFactor(fi, 'is_ordinal', !factor.is_ordinal)}
+                      className={`text-xs px-2 py-0.5 rounded font-medium border ${
+                        factor.is_ordinal
+                          ? 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'
+                          : 'bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100'
+                      }`}
+                    >
+                      {factor.is_ordinal ? 'Ordinal' : 'Nominal'}
+                    </button>
+                  </div>
                 )}
 
                 {/* AI pending action bar */}
@@ -904,8 +911,9 @@ export default function Phase2Page() {
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1 grid grid-cols-2 gap-3 mr-3">
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
                         Factor {fi + 1} name
+                        <HelpTip content="A good factor is meaningful to buyers, measurable across competing products, and independent from other factors. Aim for 4–8 factors total. Avoid factors that overlap or that buyers can't observe." />
                       </label>
                       <input
                         type="text"
@@ -941,8 +949,9 @@ export default function Phase2Page() {
 
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-gray-600 uppercase tracking-wide">
+                    <span className="text-xs font-medium text-gray-600 uppercase tracking-wide flex items-center gap-1">
                       Performance Levels
+                      <HelpTip content="Order levels from lowest to highest performance. The preference survey and coverage diagnostic both assume this ordering. You need at least 2 levels; 3–5 is typical." />
                     </span>
                     <div className="flex items-center gap-2">
                       {factor.name.trim() && categoryAnchor && (
@@ -1137,10 +1146,15 @@ export default function Phase2Page() {
                   : 'bg-red-50 border border-red-200 text-red-800'
               }`}>
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="flex items-center gap-1.5">
                     <span className="font-medium">Value scale coverage: </span>
                     <span>{(coverage * 100).toFixed(0)}% spread</span>
-                    <span className="text-xs ml-2 opacity-75">(equal-weight estimate)</span>
+                    <span className="text-xs ml-1 opacity-75">(equal-weight estimate)</span>
+                    <HelpTip
+                      content="Measures how well your reference products span the full range of performance levels. Green (≥50%) means good spread. Amber (30–50%) suggests clustering. Red (<30%) means most products sit at similar performance levels — the model will struggle to differentiate value."
+                      position="above"
+                      width="w-80"
+                    />
                   </div>
                   <span>
                     {coverage >= 0.5 ? '✓ Good coverage' :

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useParams } from 'next/navigation'
+import { HelpTip } from '@/app/components/HelpTip'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -811,7 +812,9 @@ export default function Phase5Page() {
               <h2 className="text-base font-semibold text-gray-900 mb-4">Model Fit</h2>
               <div className="grid grid-cols-3 gap-4 mb-4">
                 <div className="bg-gray-50 rounded-md p-3">
-                  <div className="text-xs text-gray-500 mb-1">Weighted R²</div>
+                  <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">Weighted R²
+                    <HelpTip width="w-80" content="R² measures how well the model explains price differences across reference products. Above 0.85 is strong; 0.70–0.85 is acceptable; below 0.70 suggests the value framework may not fully capture what drives market pricing. NRMSE shows average prediction error as a % of mean price — below 10% is good." />
+                  </div>
                   <div className={`inline-flex items-center gap-2 px-2 py-1 rounded border text-sm font-medium ${r2Color(solverResult.r_squared_weighted)}`}>
                     {(solverResult.r_squared_weighted * 100).toFixed(1)}% — {r2Label(solverResult.r_squared_weighted)}
                   </div>
@@ -1038,7 +1041,9 @@ export default function Phase5Page() {
               return (
                 <section className="bg-white rounded-lg shadow-sm border border-amber-200 p-6">
                   <div className="flex items-center gap-2 mb-2">
-                    <h2 className="text-base font-semibold text-gray-900">Benchmark Outlier Review</h2>
+                    <h2 className="text-base font-semibold text-gray-900 flex items-center gap-1.5">Benchmark Outlier Review
+                    <HelpTip width="w-80" content="Reference products whose market price is much higher or lower than the model predicts given their value score. Consider excluding a product if its price reflects factors outside your framework (e.g. a brand premium, clearance pricing, or a supply contract) rather than a model fit problem." />
+                  </h2>
                     {outlierIndices.length > 0 && (
                       <span className="text-xs font-medium bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
                         {outlierIndices.length} flagged
@@ -1204,7 +1209,9 @@ export default function Phase5Page() {
             {solverResult.sensitivity?.length > 0 && (
               <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div className="mb-1">
-                  <h2 className="text-base font-semibold text-gray-900">Sensitivity Analysis</h2>
+                  <h2 className="text-base font-semibold text-gray-900 flex items-center gap-1.5">Sensitivity Analysis
+                    <HelpTip width="w-80" content="Shows how the recommended price changes when each factor is removed from the model one at a time. A large price delta (flagged in amber) means the model is heavily dependent on that factor. Review flagged factors to confirm their weight reflects genuine buyer importance rather than a data artifact." />
+                  </h2>
                 </div>
                 <p className="text-xs text-gray-500 mb-3">
                   Impact of excluding each factor individually. Survey Weight is the maximum contribution any factor can make to the Value Index. Signal highlights factors worth reviewing.

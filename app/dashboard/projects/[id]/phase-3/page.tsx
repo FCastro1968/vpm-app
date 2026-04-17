@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
+import { HelpTip } from '@/app/components/HelpTip'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -633,10 +634,16 @@ export default function Phase3Page() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 mb-4 overflow-hidden">
 
           {/* Prompt */}
-          <div style={{ fontSize: "12px", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "center", marginBottom: "24px" }}>
+          <div style={{ fontSize: "12px", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "center", marginBottom: "24px" }} className="flex items-center justify-center gap-2">
             {q.comparison_type === 'ATTRIBUTE'
               ? 'Which factor is more important in driving purchase decisions?'
               : `Within ${q.factor_name} — which performance level delivers more value?`}
+            <HelpTip
+              width="w-80"
+              content={q.comparison_type === 'ATTRIBUTE'
+                ? "Drag toward the factor that matters more to buyers when choosing between products — all else being equal. Equal means both matter the same. Extreme (9×) means one factor is overwhelmingly more decisive. The direction you drag determines which factor gets the higher importance score."
+                : "Drag toward the performance level that delivers more value to the buyer. Equal means both levels are worth the same. Extreme means one level is far more valuable than the other."}
+            />
           </div>
 
           {/* Item cards */}

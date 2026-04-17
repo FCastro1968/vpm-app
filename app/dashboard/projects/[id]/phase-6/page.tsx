@@ -8,6 +8,7 @@ import {
   ResponsiveContainer, Label, Cell,
   BarChart, Bar, LabelList, Legend,
 } from 'recharts'
+import { HelpTip } from '@/app/components/HelpTip'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -907,7 +908,9 @@ export default function Phase6Page() {
 
         {/* ── Value Map ─────────────────────────────────────────────────── */}
         <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-base font-semibold text-gray-900 mb-1">Value Map</h2>
+          <h2 className="text-base font-semibold text-gray-900 mb-1 flex items-center gap-1.5">Value Map
+            <HelpTip width="w-96" content="The diagonal line represents fair value — products priced exactly at their model-implied value sit on it. Products above the line are priced higher than their value score suggests (overpriced); below the line are underpriced. Target product(s) appear as a 5-dot strip at their model-implied price: the large center dot is the point estimate, solid medium dots define the statistical range (±1 std dev of benchmark residuals), and hollow dots show the market envelope (the observed high and low residuals from the reference set). Hover the strip for exact values." />
+          </h2>
           <p className="text-xs text-gray-500 mb-4">
             X axis = model-implied price. Y axis = actual market price. Products above the diagonal line are priced above their model value; below are underpriced. Target product(s) sit on the line at their recommended price.
           </p>
@@ -1235,7 +1238,9 @@ export default function Phase6Page() {
         {/* ── Factor Contributions ─────────────────────────────────────────── */}
         <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-1">
-            <h2 className="text-base font-semibold text-gray-900">Factor Contributions</h2>
+            <h2 className="text-base font-semibold text-gray-900 flex items-center gap-1.5">Factor Contributions
+              <HelpTip width="w-80" content="Each row shows the dollar value one factor contributes to a product's model-implied price. The gray bar spans the full range across all products (min to max). The short vertical tick marks the average. Filled dots are target products; hollow dots are reference products. Click a product in the legend to re-sort by that product's deviation from average — factors where it stands out appear first." />
+            </h2>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1 text-xs text-gray-400">
                 <button
@@ -1466,7 +1471,9 @@ export default function Phase6Page() {
 
         {/* ── Price Recommendations ─────────────────────────────────────── */}
         <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-base font-semibold text-gray-900 mb-4">Price Recommendations</h2>
+          <h2 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-1.5">Price Recommendations
+            <HelpTip width="w-80" position="above" content="The point estimate is the model-implied price for this product based on its Value Index. The recommended range has two layers: the statistical range (±1 standard deviation of benchmark residuals) reflects normal pricing variability in this market; the wider market envelope spans the full observed high and low residuals. For repositioning products, the gap analysis shows how the current price compares to the recommended range." />
+          </h2>
           <div className="space-y-4">
             {targets.map(t => (
               <div key={t.id} className="border border-gray-100 rounded-lg p-5 bg-gray-50">

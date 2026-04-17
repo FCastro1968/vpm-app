@@ -272,6 +272,33 @@ export default function Phase5Page() {
         name: targetData.find(t => t.id === tr.target_id)?.name ?? tr.target_id,
       }))
       setSolverResult({ ...data, target_results: targetResultsWithNames })
+
+      // Write solver results back to DB so Phase 6 always has current data.
+      // Phase 2 wipes point_estimate/normalized_score when saving assignments,
+      // so autoRunSolver must restore them on every Phase 5 load.
+      const benchmarkValueIndices: Record<string, number> = {}
+      for (let i = 0; i < includedBenches.length; i++) {
+        benchmarkValueIndices[includedBenches[i].id] = data.benchmark_value_indices?.[i] ?? 0
+      }
+      await supabase.from('regression_result').update({
+        b_value:                 data.b,
+        m_value:                 data.m,
+        weighted_sse:            data.weighted_sse,
+        r_squared_weighted:      data.r_squared_weighted,
+        benchmark_value_indices: benchmarkValueIndices,
+      }).eq('project_id', projectId).is('scenario_id', null)
+
+      for (const tr of targetResultsWithNames) {
+        await supabase.from('target_score').update({
+          normalized_score:       tr.value_index,
+          point_estimate:         tr.point_estimate,
+          uncertainty_range_low:  tr.range_low,
+          uncertainty_range_high: tr.range_high,
+        })
+          .eq('target_product_id', tr.target_id)
+          .eq('project_id', projectId)
+          .is('scenario_id', null)
+      }
     } catch {
       // Silent failure — user can re-run manually
     }

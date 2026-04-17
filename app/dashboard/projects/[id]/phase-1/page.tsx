@@ -491,7 +491,6 @@ export default function Phase1Page() {
                 '✦ Generate Market Reference Set'
               )}
             </button>
-            {benchmarks.some(b => b.name.trim()) && (
             <span className="text-xs text-gray-400">AI-suggested products will appear below for review</span>
           </div>
           {aiError && <div className="mt-2 text-xs text-red-600">{aiError}</div>}

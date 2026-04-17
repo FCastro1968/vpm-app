@@ -23,8 +23,12 @@ export default function LoginPage() {
     // PKCE code in URL — exchange it client-side so the browser session is established
     if (code) {
       supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
-        if (!error && data.session) {
+        if (error) {
+          setError(`Exchange error: ${error.message}`)
+        } else if (data.session) {
           setMode('reset')
+        } else {
+          setError('Exchange succeeded but no session returned.')
         }
       })
       return

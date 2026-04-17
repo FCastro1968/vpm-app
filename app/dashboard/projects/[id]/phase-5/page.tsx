@@ -65,6 +65,15 @@ interface SensitivityRow {
   flagged: boolean
 }
 
+interface RespondentModelResult {
+  respondent_id: string
+  name: string
+  factor_weights: Record<string, number>
+  target_prices: number[]
+  r_squared: number
+  is_outlier: boolean
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function r2Color(r2: number) {
@@ -126,8 +135,11 @@ export default function Phase5Page() {
     b_value: number; m_value: number
     weighted_sse: number; success: boolean
   } | null>(null)
-  const [impliedRunning,   setImpliedRunning]   = useState(false)
-  const [impliedError,     setImpliedError]     = useState('')
+  const [impliedRunning,      setImpliedRunning]      = useState(false)
+  const [impliedError,        setImpliedError]        = useState('')
+  const [respondentAnalysis,  setRespondentAnalysis]  = useState<RespondentModelResult[] | null>(null)
+  const [respondentRunning,   setRespondentRunning]   = useState(false)
+  const [respondentError,     setRespondentError]     = useState('')
   const [aiInterpretation, setAiInterpretation] = useState('')
   const [aiInterpLoading,  setAiInterpLoading]  = useState(false)
   const [categoryAnchor,   setCategoryAnchor]   = useState('')
@@ -716,6 +728,180 @@ export default function Phase5Page() {
       setImpliedError(e.message ?? 'Analysis failed')
     } finally {
       setImpliedRunning(false)
+    }
+  }
+
+  // ── Respondent-Level Model Analysis (Tool 4) ─────────────────────────────
+
+  async function runRespondentAnalysis() {
+    if (!solverResult) return
+    setRespondentRunning(true)
+    setRespondentError('')
+    try {
+      // Load included respondents (FACILITATED always eligible; DISTRIBUTED need submitted_at)
+      const { data: respondentData } = await supabase
+        .from('respondent')
+        .select('id, name, email, mode, submitted_at, included')
+        .eq('project_id', projectId)
+        .eq('included', true)
+      const eligible = (respondentData ?? []).filter(r =>
+        r.mode === 'FACILITATED' || r.submitted_at != null
+      )
+      if (eligible.length < 2) throw new Error('Need at least 2 respondents for comparison.')
+
+      // Load all pairwise responses in one query
+      const { data: allResponses } = await supabase
+        .from('pairwise_response')
+        .select('respondent_id, comparison_type, item_a_id, item_b_id, score, direction')
+        .in('respondent_id', eligible.map(r => r.id))
+
+      // Shared solver inputs — same as autoRunSolver
+      const { data: levelData } = await supabase
+        .from('level').select('id, attribute_id').in('attribute_id', factors.map(f => f.id))
+      const attributeLevels: Record<string, string[]> = {}
+      for (const l of levelData ?? []) {
+        if (!attributeLevels[l.attribute_id]) attributeLevels[l.attribute_id] = []
+        attributeLevels[l.attribute_id].push(l.id)
+      }
+
+      const includedBenches = benchmarks.filter(b => b.included_in_regression)
+      const { data: benchAssignData } = await supabase
+        .from('benchmark_level_assignment').select('benchmark_id, attribute_id, level_id')
+        .in('benchmark_id', includedBenches.map(b => b.id))
+      const benchmarkAssignments: Record<string, string>[] = includedBenches.map(b => {
+        const assigns: Record<string, string> = {}
+        for (const a of benchAssignData ?? []) {
+          if (a.benchmark_id === b.id) assigns[a.attribute_id] = a.level_id
+        }
+        return assigns
+      })
+
+      const { data: targetScoreData } = await supabase
+        .from('target_score').select('target_product_id, level_assignments_json')
+        .eq('project_id', projectId).is('scenario_id', null)
+        .in('target_product_id', targetProducts.map(t => t.id))
+      const targetAssignments = targetProducts.map(t => {
+        const ts = targetScoreData?.find(ts => ts.target_product_id === t.id)
+        return (ts?.level_assignments_json as Record<string, string>) ?? {}
+      })
+
+      const totalShare = includedBenches.reduce((s, b) => s + (b.market_share_pct ?? 0), 0)
+      const marketShareWeights = includedBenches.map(b =>
+        totalShare > 0 ? (b.market_share_pct ?? 0) / totalShare : 1 / includedBenches.length
+      )
+
+      // Per-respondent analysis — all respondents in parallel
+      const results = await Promise.all(eligible.map(async (respondent) => {
+        try {
+          const rResps = (allResponses ?? []).filter(r => r.respondent_id === respondent.id)
+          const N = factors.length
+
+          // Attribute pairwise matrix
+          const attrMatrix: number[][] = Array.from({ length: N }, () => Array(N).fill(1))
+          for (const resp of rResps.filter(r => r.comparison_type === 'ATTRIBUTE')) {
+            const iIdx = factors.findIndex(f => f.id === resp.item_a_id)
+            const jIdx = factors.findIndex(f => f.id === resp.item_b_id)
+            if (iIdx === -1 || jIdx === -1) continue
+            if (resp.direction === 'EQUAL') {
+              attrMatrix[iIdx][jIdx] = 1; attrMatrix[jIdx][iIdx] = 1
+            } else if (resp.direction === 'A') {
+              attrMatrix[iIdx][jIdx] = resp.score; attrMatrix[jIdx][iIdx] = 1 / resp.score
+            } else {
+              attrMatrix[jIdx][iIdx] = resp.score; attrMatrix[iIdx][jIdx] = 1 / resp.score
+            }
+          }
+
+          // Attribute weights + all factor level utilities in parallel
+          const [attrResult, ...levelResults] = await Promise.all([
+            fetch('/api/solver?endpoint=priority-vector', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ matrix: attrMatrix }),
+            }).then(r => r.json()),
+            ...factors.map(async (factor) => {
+              const levelIds = attributeLevels[factor.id] ?? []
+              const K = levelIds.length
+              if (K < 2) return { factor_id: factor.id, utilities: Object.fromEntries(levelIds.map(id => [id, 1])) }
+              const matrix: number[][] = Array.from({ length: K }, () => Array(K).fill(1))
+              for (const resp of rResps.filter(r =>
+                r.comparison_type === 'LEVEL' &&
+                levelIds.includes(r.item_a_id) && levelIds.includes(r.item_b_id)
+              )) {
+                const iIdx = levelIds.indexOf(resp.item_a_id)
+                const jIdx = levelIds.indexOf(resp.item_b_id)
+                if (iIdx === -1 || jIdx === -1) continue
+                if (resp.direction === 'EQUAL') {
+                  matrix[iIdx][jIdx] = 1; matrix[jIdx][iIdx] = 1
+                } else if (resp.direction === 'A') {
+                  matrix[iIdx][jIdx] = resp.score; matrix[jIdx][iIdx] = 1 / resp.score
+                } else {
+                  matrix[jIdx][iIdx] = resp.score; matrix[iIdx][jIdx] = 1 / resp.score
+                }
+              }
+              const res = await fetch('/api/solver?endpoint=priority-vector', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ matrix }),
+              })
+              const data = await res.json()
+              return { factor_id: factor.id, utilities: Object.fromEntries(levelIds.map((id, i) => [id, data.weights?.[i] ?? 0])) }
+            }),
+          ])
+
+          const factorWeights: Record<string, number> = {}
+          factors.forEach((f, i) => { factorWeights[f.id] = attrResult.weights?.[i] ?? (1 / N) })
+          const levelUtilities: Record<string, number> = {}
+          for (const lr of levelResults) {
+            if (lr?.utilities) Object.assign(levelUtilities, lr.utilities)
+          }
+
+          // Solve with this respondent's individual weights/utilities
+          const solveRes = await fetch('/api/solver?endpoint=solve', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              attribute_ids:         factors.map(f => f.id),
+              attribute_weights:     factorWeights,
+              level_utilities:       levelUtilities,
+              attribute_levels:      attributeLevels,
+              benchmark_ids:         includedBenches.map(b => b.id),
+              benchmark_assignments: benchmarkAssignments,
+              market_prices:         includedBenches.map(b => b.market_price),
+              market_share_weights:  marketShareWeights,
+              target_ids:            targetProducts.map(t => t.id),
+              target_assignments:    targetAssignments,
+              run_sensitivity:       false,
+            }),
+          })
+          const solveData = await solveRes.json()
+          if (!solveData.success) return null
+
+          return {
+            respondent_id: respondent.id,
+            name: respondent.name || respondent.email || 'Respondent',
+            factor_weights: factorWeights,
+            target_prices: (solveData.target_results ?? []).map((tr: any) => tr.point_estimate as number),
+            r_squared: solveData.r_squared_weighted as number,
+            is_outlier: false,
+          } as RespondentModelResult
+        } catch { return null }
+      }))
+
+      const valid = results.filter(r => r !== null) as RespondentModelResult[]
+      if (valid.length < 2) throw new Error('Insufficient data — fewer than 2 respondents produced valid results.')
+
+      // Flag outliers: primary target price > 2 std devs from respondent mean
+      if (valid.length >= 3 && targetProducts.length > 0) {
+        const prices = valid.map(r => r.target_prices[0] ?? 0)
+        const mean = prices.reduce((a, b) => a + b, 0) / prices.length
+        const std = Math.sqrt(prices.reduce((a, b) => a + (b - mean) ** 2, 0) / prices.length)
+        for (const r of valid) {
+          r.is_outlier = std > 0 && Math.abs((r.target_prices[0] ?? 0) - mean) > 2 * std
+        }
+      }
+
+      setRespondentAnalysis(valid)
+    } catch (e: any) {
+      setRespondentError(e.message ?? 'Analysis failed')
+    } finally {
+      setRespondentRunning(false)
     }
   }
 
@@ -1468,6 +1654,146 @@ export default function Phase5Page() {
                 </section>
               )
             })()}
+
+            {/* ── Respondent-Level Model Analysis (Tool 4) ── */}
+            <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="flex items-start justify-between mb-1">
+                <div>
+                  <h2 className="text-base font-semibold text-gray-900">Respondent-Level Model Analysis</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Runs the model independently for each respondent using their individual survey responses — shows how much the consensus is driven by agreement vs. one or two dominant voices.
+                  </p>
+                </div>
+                <button
+                  onClick={runRespondentAnalysis}
+                  disabled={respondentRunning}
+                  className="ml-4 flex-shrink-0 px-4 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {respondentRunning
+                    ? <><span className="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> Running…</>
+                    : respondentAnalysis ? '↺ Re-run' : 'Run Analysis'}
+                </button>
+              </div>
+
+              {respondentError && (
+                <div className="mt-3 text-xs text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2">{respondentError}</div>
+              )}
+
+              {respondentAnalysis && (() => {
+                const consensusWeights = attributeWeights
+                const consensusPrices = solverResult!.target_results.map(tr => tr.point_estimate)
+                const consensusR2 = solverResult!.r_squared_weighted
+                const eqShare = 1 / factors.length  // equal-share weight (as fraction)
+
+                // Stability stats on primary target
+                const prices = respondentAnalysis.map(r => r.target_prices[0] ?? 0)
+                const mean = prices.reduce((a, b) => a + b, 0) / prices.length
+                const std = prices.length > 1
+                  ? Math.sqrt(prices.reduce((a, b) => a + (b - mean) ** 2, 0) / prices.length)
+                  : 0
+                const cvPct = mean > 0 ? (std / mean) * 100 : 0
+                const stabilityColor = cvPct < 5 ? '#15803d' : cvPct < 15 ? '#b45309' : '#b91c1c'
+                const stabilityText = cvPct < 5
+                  ? '✓ Consensus is stable — respondent prices are tightly clustered'
+                  : cvPct < 15
+                  ? '⚠ Moderate variance — some divergence in preferences; consensus is defensible but inspect flagged respondents'
+                  : '⚠ High variance — large spread suggests strongly divergent views; identify which respondents are driving the model'
+
+                const wDevColor = (w: number, cw: number) => {
+                  const diffPp = Math.abs(w - cw) * 100
+                  return diffPp < 5 ? '#374151' : diffPp < 15 ? '#b45309' : '#b91c1c'
+                }
+                const pDevColor = (p: number, cp: number) => {
+                  const diffPct = cp > 0 ? Math.abs(p - cp) / cp * 100 : 0
+                  return diffPct < 5 ? '#374151' : diffPct < 15 ? '#b45309' : '#b91c1c'
+                }
+
+                return (
+                  <div className="mt-4">
+                    <div className="overflow-x-auto">
+                      <table className="text-sm border-separate border-spacing-0" style={{ minWidth: '100%' }}>
+                        <thead>
+                          <tr>
+                            <th className="text-left text-xs font-medium text-gray-500 pb-3 pr-4 border-b border-gray-100" style={{ minWidth: 130 }}>Respondent</th>
+                            {factors.map(f => (
+                              <th key={f.id} className="text-right text-xs font-medium text-gray-500 pb-3 pr-4 border-b border-gray-100" style={{ minWidth: 80 }}>{f.name}</th>
+                            ))}
+                            {targetProducts.map(t => (
+                              <th key={t.id} className="text-right text-xs font-medium text-gray-500 pb-3 pr-4 border-b border-gray-100" style={{ minWidth: 100 }}>{t.name}</th>
+                            ))}
+                            <th className="text-right text-xs font-medium text-gray-500 pb-3 border-b border-gray-100" style={{ minWidth: 48 }}>R²</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {respondentAnalysis.map((r, i) => (
+                            <tr key={r.respondent_id} className={r.is_outlier ? 'bg-amber-50' : i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                              <td className="py-2 pr-4 text-gray-800">
+                                <span>{r.name}</span>
+                                {r.is_outlier && <span className="ml-1.5 text-xs text-amber-700 font-medium">⚠ outlier</span>}
+                              </td>
+                              {factors.map(f => {
+                                const w = r.factor_weights[f.id] ?? 0
+                                const cw = consensusWeights[f.id] ?? 0
+                                const diffPp = (w - cw) * 100
+                                return (
+                                  <td key={f.id} className="py-2 pr-4 text-right" style={{ color: wDevColor(w, cw) }}>
+                                    {(w * 100).toFixed(1)}%
+                                    {Math.abs(diffPp) >= 5 && (
+                                      <span className="text-xs ml-0.5">({diffPp > 0 ? '+' : ''}{diffPp.toFixed(0)}pp)</span>
+                                    )}
+                                  </td>
+                                )
+                              })}
+                              {targetProducts.map((t, ti) => {
+                                const p = r.target_prices[ti] ?? 0
+                                const cp = consensusPrices[ti] ?? 0
+                                const diffPct = cp > 0 ? ((p - cp) / cp) * 100 : 0
+                                return (
+                                  <td key={t.id} className="py-2 pr-4 text-right" style={{ color: pDevColor(p, cp) }}>
+                                    {formatCurrency(p)}
+                                    {Math.abs(diffPct) >= 5 && (
+                                      <span className="text-xs ml-0.5">({diffPct > 0 ? '+' : ''}{diffPct.toFixed(0)}%)</span>
+                                    )}
+                                  </td>
+                                )
+                              })}
+                              <td className="py-2 text-right text-gray-500">{(r.r_squared * 100).toFixed(0)}%</td>
+                            </tr>
+                          ))}
+
+                          {/* Consensus row */}
+                          <tr className="bg-blue-50 font-semibold border-t border-blue-100">
+                            <td className="py-2 pr-4 text-blue-800">Consensus</td>
+                            {factors.map(f => (
+                              <td key={f.id} className="py-2 pr-4 text-right text-blue-800">
+                                {((consensusWeights[f.id] ?? 0) * 100).toFixed(1)}%
+                              </td>
+                            ))}
+                            {targetProducts.map((t, ti) => (
+                              <td key={t.id} className="py-2 pr-4 text-right text-blue-800">
+                                {formatCurrency(consensusPrices[ti] ?? 0)}
+                              </td>
+                            ))}
+                            <td className="py-2 text-right text-blue-800">{(consensusR2 * 100).toFixed(0)}%</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Stats footer */}
+                    <div className="mt-3 flex flex-wrap gap-6 text-xs text-gray-500">
+                      {targetProducts.length > 0 && (
+                        <>
+                          <span>Price range: {formatCurrency(Math.min(...prices))} — {formatCurrency(Math.max(...prices))}</span>
+                          <span>Std dev: {formatCurrency(Math.round(std))} ({cvPct.toFixed(1)}% of mean)</span>
+                        </>
+                      )}
+                      <span style={{ color: stabilityColor }}>{stabilityText}</span>
+                    </div>
+                  </div>
+                )
+              })()}
+            </section>
 
             <div className="flex justify-between pb-8">
               <button

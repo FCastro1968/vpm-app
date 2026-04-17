@@ -464,7 +464,7 @@ export default function Phase1Page() {
         <section className="bg-white rounded-lg shadow border border-gray-300 p-4">
           <h2 className="text-sm font-semibold text-gray-900 mb-0.5">Category Anchor</h2>
           <p className="text-xs text-gray-500 mb-3">
-            Describe a representative product in your category. Used to generate a suggested market reference set and estimate market shares.
+            Describe a representative product in your category. Used to generate a suggested market reference set.
             {targets[0]?.name && targets[0].use_case_type === 'REPOSITION' && (
               <span className="text-blue-600"> For repositioning, your target product naturally serves as the anchor.</span>
             )}
@@ -519,11 +519,11 @@ export default function Phase1Page() {
           )}
 
           {/* Table header */}
-          <div className="grid gap-2 mb-1.5 px-1" style={{ gridTemplateColumns: '1fr 76px 66px 148px' }}>
+          <div className="grid gap-2 mb-1.5 px-1" style={{ gridTemplateColumns: '1fr 76px 66px 24px' }}>
             <div className="text-xs font-medium text-gray-500">Product name</div>
             <div className="text-xs font-medium text-gray-500">Price ({currency || 'USD'})</div>
             <div className="text-xs font-medium text-gray-500">Mkt share %</div>
-            <div className="text-xs font-medium text-gray-500">Share estimate</div>
+            <div />
           </div>
 
           <div className="space-y-1.5">
@@ -534,7 +534,7 @@ export default function Phase1Page() {
                   key={i}
                   className={`rounded-md border p-1.5 ${isPending ? 'border-blue-200 bg-blue-50' : 'border-transparent'}`}
                 >
-                  <div className="grid gap-2 items-center" style={{ gridTemplateColumns: '1fr 76px 66px 148px' }}>
+                  <div className="grid gap-2 items-center" style={{ gridTemplateColumns: '1fr 76px 66px 24px' }}>
                     {/* Name */}
                     <div className="flex items-center gap-1.5 min-w-0">
                       {isPending && <span className="text-xs text-blue-500 font-medium flex-shrink-0">✦</span>}

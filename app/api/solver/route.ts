@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     return NextResponse.json(
-      { error: 'Could not reach solver service' },
+      { error: 'Could not reach solver service', detail: String(error), url: `${SOLVER_URL}/${endpoint}` },
       { status: 503 }
     )
   }

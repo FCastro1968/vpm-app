@@ -24,12 +24,12 @@ export default async function ProjectLayout({
   if (!project) redirect('/dashboard')
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Left nav */}
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Top nav */}
       <ProjectNav project={project} />
 
-      {/* Main content */}
-      <main className="flex-1 p-8 overflow-y-auto">
+      {/* Main content — full width */}
+      <main className="flex-1 px-8 py-8 overflow-y-auto overflow-x-hidden">
         {children}
       </main>
     </div>

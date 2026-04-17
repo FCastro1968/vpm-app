@@ -6,6 +6,7 @@ import { useRouter, useParams } from 'next/navigation'
 
 type UseCaseType = 'NPI' | 'REPOSITION'
 type BenchmarkPriceBasis = 'LIST_PRICE' | 'AVERAGE_MARKET_PRICE' | 'CUSTOM'
+type ConfidenceTier = 'HIGH' | 'MODERATE' | 'LOW' | 'NOT_FOUND'
 
 interface TargetProduct {
   id?: string
@@ -20,6 +21,15 @@ interface Benchmark {
   name: string
   market_price: string
   market_share_pct: string
+  // AI assist state
+  aiSuggested?: boolean      // true = came from AI, pending acceptance
+  accepted?: boolean         // true = user kept it
+  shareEstimate?: number | null
+  shareConfidence?: ConfidenceTier
+  shareSource?: string | null
+  shareNote?: string | null
+  shareAiAssisted?: boolean
+  shareLoading?: boolean
 }
 
 const BASIS_LABELS: Record<BenchmarkPriceBasis, string> = {
@@ -28,40 +38,63 @@ const BASIS_LABELS: Record<BenchmarkPriceBasis, string> = {
   CUSTOM: 'Custom',
 }
 
+const CONFIDENCE_COLORS: Record<ConfidenceTier, string> = {
+  HIGH:      'bg-green-100 text-green-700',
+  MODERATE:  'bg-yellow-100 text-yellow-700',
+  LOW:       'bg-orange-100 text-orange-700',
+  NOT_FOUND: 'bg-gray-100 text-gray-500',
+}
+
+const CONFIDENCE_LABELS: Record<ConfidenceTier, string> = {
+  HIGH:      'High',
+  MODERATE:  'Moderate',
+  LOW:       'Low',
+  NOT_FOUND: 'Not found',
+}
+
+async function callAI(task: string, payload: object) {
+  const res = await fetch('/api/ai', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ task, payload }),
+  })
+  if (!res.ok) throw new Error(`AI request failed: ${res.status}`)
+  return res.json()
+}
+
 export default function Phase1Page() {
   const params = useParams()
   const projectId = params.id as string
   const router = useRouter()
   const supabase = createClient()
 
-  // Project-level fields
-  const [projectName, setProjectName] = useState('')
-  const [currency, setCurrency] = useState('USD')
-  const [geoScope, setGeoScope] = useState('')
-  const [priceBasis, setPriceBasis] = useState<BenchmarkPriceBasis | ''>('')
+  const [projectName,          setProjectName]          = useState('')
+  const [currency,             setCurrency]             = useState('USD')
+  const [geoScope,             setGeoScope]             = useState('')
+  const [targetSegment,        setTargetSegment]        = useState('')
+  const [priceBasis,           setPriceBasis]           = useState<BenchmarkPriceBasis | ''>('')
   const [priceBasisCustomDesc, setPriceBasisCustomDesc] = useState('')
-
-  // Target products (up to 3)
-  const [targets, setTargets] = useState<TargetProduct[]>([
+  const [targets,              setTargets]              = useState<TargetProduct[]>([
     { name: '', use_case_type: 'NPI', current_price: '', display_order: 1 },
   ])
-
-  // Benchmarks
-  const [benchmarks, setBenchmarks] = useState<Benchmark[]>([
+  const [benchmarks,           setBenchmarks]           = useState<Benchmark[]>([
     { name: '', market_price: '', market_share_pct: '' },
     { name: '', market_price: '', market_share_pct: '' },
   ])
+  const [categoryAnchor,       setCategoryAnchor]       = useState('')
+  const [generatingBenchmarks, setGeneratingBenchmarks] = useState(false)
+  const [saving,               setSaving]               = useState(false)
+  const [error,                setError]                = useState('')
+  const [aiError,              setAiError]              = useState('')
+  const [loaded,               setLoaded]               = useState(false)
 
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-  const [loaded, setLoaded] = useState(false)
+  // ── Load ──────────────────────────────────────────────────────────────────
 
-  // Load existing data
   useEffect(() => {
     async function load() {
       const { data: project } = await supabase
         .from('project')
-        .select('name, currency, geographic_scope, benchmark_price_basis, benchmark_price_basis_custom_description')
+        .select('name, currency, geographic_scope, target_segment, benchmark_price_basis, benchmark_price_basis_custom_description, category_anchor')
         .eq('id', projectId)
         .single()
 
@@ -69,8 +102,10 @@ export default function Phase1Page() {
         setProjectName(project.name ?? '')
         setCurrency(project.currency ?? 'USD')
         setGeoScope(project.geographic_scope ?? '')
+        setTargetSegment(project.target_segment ?? '')
         setPriceBasis(project.benchmark_price_basis ?? '')
         setPriceBasisCustomDesc(project.benchmark_price_basis_custom_description ?? '')
+        setCategoryAnchor(project.category_anchor ?? '')
       }
 
       const { data: existingTargets } = await supabase
@@ -88,7 +123,7 @@ export default function Phase1Page() {
 
       const { data: existingBenchmarks } = await supabase
         .from('benchmark')
-        .select('id, name, market_price, market_share_pct')
+        .select('id, name, market_price, market_share_pct, market_share_source, market_share_confidence, market_share_ai_assisted')
         .eq('project_id', projectId)
         .order('name')
 
@@ -97,6 +132,9 @@ export default function Phase1Page() {
           ...b,
           market_price: b.market_price?.toString() ?? '',
           market_share_pct: b.market_share_pct?.toString() ?? '',
+          shareConfidence: (b.market_share_confidence as ConfidenceTier) ?? undefined,
+          shareSource: b.market_share_source ?? undefined,
+          shareAiAssisted: b.market_share_ai_assisted ?? false,
         })))
       }
 
@@ -105,32 +143,30 @@ export default function Phase1Page() {
     load()
   }, [projectId])
 
-  // Target product helpers
+  // ── Target helpers ────────────────────────────────────────────────────────
+
   function addTarget() {
     if (targets.length >= 3) return
-    setTargets([...targets, {
-      name: '', use_case_type: 'NPI', current_price: '',
-      display_order: targets.length + 1
-    }])
+    setTargets([...targets, { name: '', use_case_type: 'NPI', current_price: '', display_order: targets.length + 1 }])
   }
 
   function removeTarget(index: number) {
     if (targets.length <= 1) return
-    setTargets(targets.filter((_, i) => i !== index)
-      .map((t, i) => ({ ...t, display_order: i + 1 })))
+    setTargets(targets.filter((_, i) => i !== index).map((t, i) => ({ ...t, display_order: i + 1 })))
   }
 
   function updateTarget(index: number, field: keyof TargetProduct, value: string) {
     setTargets(targets.map((t, i) => i === index ? { ...t, [field]: value } : t))
   }
 
-  // Benchmark helpers
+  // ── Benchmark helpers ─────────────────────────────────────────────────────
+
   function addBenchmark() {
     setBenchmarks([...benchmarks, { name: '', market_price: '', market_share_pct: '' }])
   }
 
   function removeBenchmark(index: number) {
-    if (benchmarks.length <= 2) return
+    if (benchmarks.filter(b => !b.aiSuggested || b.accepted).length <= 2 && !benchmarks[index].aiSuggested) return
     setBenchmarks(benchmarks.filter((_, i) => i !== index))
   }
 
@@ -138,15 +174,142 @@ export default function Phase1Page() {
     setBenchmarks(benchmarks.map((b, i) => i === index ? { ...b, [field]: value } : b))
   }
 
-  // Validation
+  function acceptSuggestion(index: number) {
+    setBenchmarks(benchmarks.map((b, i) => i === index ? { ...b, accepted: true } : b))
+    // Apply share estimate if available
+    const b = benchmarks[index]
+    if (b.shareEstimate != null && !b.market_share_pct) {
+      setBenchmarks(prev => prev.map((bm, i) => i === index
+        ? { ...bm, accepted: true, market_share_pct: b.shareEstimate!.toString() }
+        : bm
+      ))
+    }
+  }
+
+  function dismissSuggestion(index: number) {
+    setBenchmarks(benchmarks.filter((_, i) => i !== index))
+  }
+
+  // ── AI: Generate benchmark suggestions ───────────────────────────────────
+
+  async function handleGenerateBenchmarks() {
+    if (!categoryAnchor.trim()) {
+      setAiError('Please enter a Category Anchor description first.')
+      return
+    }
+    setGeneratingBenchmarks(true)
+    setAiError('')
+
+    try {
+      const { benchmarks: suggestions } = await callAI('suggest_benchmarks', {
+        category_anchor: categoryAnchor,
+        geography: geoScope || 'Global',
+      })
+
+      // Remove empty placeholder rows, add suggestions as pending
+      const existing = benchmarks.filter(b => b.name.trim() && !b.aiSuggested)
+      const newSuggestions: Benchmark[] = suggestions.map((s: any) => ({
+        name: s.name,
+        market_price: '',
+        market_share_pct: '',
+        aiSuggested: true,
+        accepted: false,
+        shareLoading: false,
+      }))
+
+      setBenchmarks([...existing, ...newSuggestions])
+
+      // Kick off market share estimation for each suggestion in the background
+      estimateAllShares([...existing, ...newSuggestions])
+
+    } catch (err: any) {
+      setAiError(err.message ?? 'Failed to generate suggestions')
+    } finally {
+      setGeneratingBenchmarks(false)
+    }
+  }
+
+  // ── AI: Estimate market shares ────────────────────────────────────────────
+
+  async function estimateAllShares(benchList: Benchmark[]) {
+    const anchor = categoryAnchor || targets[0]?.name || ''
+    const toEstimate = benchList.filter(b => b.aiSuggested && b.name.trim())
+    if (toEstimate.length === 0) return
+
+    // Mark all as loading
+    setBenchmarks(prev => prev.map(bm =>
+      toEstimate.some(b => b.name === bm.name) ? { ...bm, shareLoading: true } : bm
+    ))
+
+    try {
+      const { results } = await callAI('estimate_market_share', {
+        benchmark_names: toEstimate.map(b => b.name),
+        category_anchor: anchor,
+        geography: geoScope || 'Global',
+      })
+
+      setBenchmarks(prev => prev.map(bm => {
+        const idx = toEstimate.findIndex(b => b.name === bm.name)
+        if (idx === -1) return bm
+        const result = results[idx]
+        if (!result) return { ...bm, shareLoading: false, shareConfidence: 'NOT_FOUND' as ConfidenceTier }
+        return {
+          ...bm,
+          shareLoading: false,
+          shareEstimate: result.estimate,
+          shareConfidence: result.confidence as ConfidenceTier,
+          shareSource: result.source,
+          shareNote: result.note,
+          shareAiAssisted: true,
+        }
+      }))
+    } catch {
+      setBenchmarks(prev => prev.map(bm =>
+        toEstimate.some(b => b.name === bm.name)
+          ? { ...bm, shareLoading: false, shareConfidence: 'NOT_FOUND' as ConfidenceTier }
+          : bm
+      ))
+    }
+  }
+
+  async function estimateSingleShare(index: number) {
+    const b = benchmarks[index]
+    if (!b.name.trim()) return
+    const anchor = categoryAnchor || targets[0]?.name || ''
+
+    setBenchmarks(prev => prev.map((bm, i) => i === index ? { ...bm, shareLoading: true } : bm))
+    try {
+      const { results } = await callAI('estimate_market_share', {
+        benchmark_names: [b.name],
+        category_anchor: anchor,
+        geography: geoScope || 'Global',
+      })
+      const result = results[0]
+      setBenchmarks(prev => prev.map((bm, i) => i === index ? {
+        ...bm,
+        shareLoading: false,
+        shareEstimate: result?.estimate ?? null,
+        shareConfidence: (result?.confidence ?? 'NOT_FOUND') as ConfidenceTier,
+        shareSource: result?.source ?? null,
+        shareNote: result?.note ?? null,
+        shareAiAssisted: true,
+        market_share_pct: result?.estimate != null ? result.estimate.toString() : bm.market_share_pct,
+      } : bm))
+    } catch {
+      setBenchmarks(prev => prev.map((bm, i) => i === index ? { ...bm, shareLoading: false } : bm))
+    }
+  }
+
+  // ── Validation + Save ─────────────────────────────────────────────────────
+
   function validate(): string | null {
     if (!projectName.trim()) return 'Project name is required'
     if (!priceBasis) return 'Benchmark Price Basis must be declared before entering prices'
     if (priceBasis === 'CUSTOM' && !priceBasisCustomDesc.trim()) return 'Custom basis requires a description'
     if (targets.some(t => !t.name.trim())) return 'All target products must have a name'
-    if (benchmarks.some(b => !b.name.trim())) return 'All reference products must have a name'
-    if (benchmarks.some(b => !b.market_price || isNaN(Number(b.market_price)))) return 'All reference products must have a valid price'
-    if (benchmarks.filter(b => b.name.trim()).length < 2) return 'At least 2 reference products are required'
+    const acceptedBenchmarks = benchmarks.filter(b => b.name.trim() && (!b.aiSuggested || b.accepted))
+    if (acceptedBenchmarks.some(b => !b.market_price || isNaN(Number(b.market_price)))) return 'All reference products must have a valid price'
+    if (acceptedBenchmarks.length < 3) return 'At least 3 reference products are required for a valid model'
     return null
   }
 
@@ -158,22 +321,21 @@ export default function Phase1Page() {
     setError('')
 
     try {
-      // Update project
       const { error: projectError } = await supabase
         .from('project')
         .update({
           name: projectName.trim(),
           currency,
           geographic_scope: geoScope,
+          target_segment: targetSegment || null,
           benchmark_price_basis: priceBasis,
           benchmark_price_basis_custom_description: priceBasisCustomDesc || null,
+          category_anchor: categoryAnchor || null,
           status: 'SCOPE_COMPLETE',
         })
         .eq('id', projectId)
-
       if (projectError) throw projectError
 
-      // Upsert target products
       for (const target of targets) {
         if (!target.name.trim()) continue
         const payload = {
@@ -191,14 +353,18 @@ export default function Phase1Page() {
         }
       }
 
-      // Upsert benchmarks
-      for (const bench of benchmarks) {
-        if (!bench.name.trim()) continue
+      // Only save accepted benchmarks (or manually entered ones)
+      const benchmarksToSave = benchmarks.filter(b => b.name.trim() && (!b.aiSuggested || b.accepted))
+      for (const bench of benchmarksToSave) {
         const payload = {
           project_id: projectId,
           name: bench.name.trim(),
           market_price: Number(bench.market_price),
           market_share_pct: bench.market_share_pct ? Number(bench.market_share_pct) : null,
+          market_share_confidence: bench.shareConfidence ?? null,
+          market_share_source: bench.shareSource ?? null,
+          market_share_ai_assisted: bench.shareAiAssisted ?? false,
+          included_in_regression: true,
         }
         if (bench.id) {
           await supabase.from('benchmark').update(payload).eq('id', bench.id)
@@ -217,168 +383,178 @@ export default function Phase1Page() {
     }
   }
 
-  if (!loaded) {
-    return <div className="text-gray-400 text-sm">Loading...</div>
-  }
+  if (!loaded) return <div className="text-gray-400 text-sm">Loading...</div>
 
-  const totalShares = benchmarks.reduce((sum, b) =>
-    sum + (b.market_share_pct ? Number(b.market_share_pct) : 0), 0)
+  const totalShares = benchmarks
+    .filter(b => !b.aiSuggested || b.accepted)
+    .reduce((sum, b) => sum + (b.market_share_pct ? Number(b.market_share_pct) : 0), 0)
+
+  const hasPendingSuggestions = benchmarks.some(b => b.aiSuggested && !b.accepted)
 
   return (
-    <div className="max-w-3xl">
-      <div className="mb-6">
+    <div className="w-full">
+      <div className="mb-4">
         <h1 className="text-2xl font-bold text-gray-900">Scope Definition</h1>
-        <p className="text-gray-500 mt-1 text-sm">
-          Define the project context, target products, and market reference set.
-        </p>
+        <p className="text-gray-500 mt-0.5 text-sm">Define the project context, target products, and market reference set.</p>
       </div>
 
-      <div className="space-y-8">
+      <div style={{ display: 'grid', gridTemplateColumns: '300px 360px 1fr', gap: '16px', alignItems: 'start' }}>
 
-        {/* ── Project Details ── */}
-        <section className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-base font-semibold text-gray-900 mb-4">Project Details</h2>
-          <div className="space-y-4">
+        {/* ── COL 1: Project Details + Price Basis ─────────────── */}
+        <div className="space-y-4">
+
+        {/* Project Details */}
+        <section className="bg-white rounded-lg shadow border border-gray-300 p-4">
+          <h2 className="text-sm font-semibold text-gray-900 mb-3">Project Details</h2>
+          <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Project name</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Project name</label>
               <input
                 type="text"
                 value={projectName}
                 onChange={e => setProjectName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-3" style={{ gridTemplateColumns: '80px 1fr' }}>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Currency</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Currency</label>
                 <input
                   type="text"
                   value={currency}
                   onChange={e => setCurrency(e.target.value.toUpperCase())}
                   placeholder="USD"
                   maxLength={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Geographic scope</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Geography</label>
                 <input
                   type="text"
                   value={geoScope}
                   onChange={e => setGeoScope(e.target.value)}
-                  placeholder="e.g. North America, Global"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="e.g. North America"
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Target Segment
+                <span className="ml-1 font-normal text-gray-400">optional</span>
+              </label>
+              <input
+                type="text"
+                value={targetSegment}
+                onChange={e => setTargetSegment(e.target.value)}
+                placeholder="e.g. Hospital labs, SMB teams"
+                className="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              />
             </div>
           </div>
         </section>
 
-        {/* ── Benchmark Price Basis ── */}
-        <section className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-base font-semibold text-gray-900 mb-1">Benchmark Price Basis</h2>
-          <p className="text-xs text-gray-500 mb-4">
-            Declare the price type before entering any benchmark prices. This must be consistent across all reference products.
+        {/* Benchmark Price Basis */}
+        <section className="bg-white rounded-lg shadow border border-gray-300 p-4">
+          <h2 className="text-sm font-semibold text-gray-900 mb-0.5">Benchmark Price Basis</h2>
+          <p className="text-xs text-gray-500 mb-3">
+            Declare the price type before entering prices. Must be consistent across all reference products.
           </p>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {(['LIST_PRICE', 'AVERAGE_MARKET_PRICE', 'CUSTOM'] as BenchmarkPriceBasis[]).map(basis => (
-              <label key={basis} className="flex items-start gap-3 cursor-pointer">
+              <label key={basis} className="flex items-start gap-2 cursor-pointer">
                 <input
                   type="radio"
                   name="priceBasis"
                   value={basis}
                   checked={priceBasis === basis}
                   onChange={() => setPriceBasis(basis)}
-                  className="mt-0.5"
+                  className="mt-0.5 flex-shrink-0"
                 />
                 <div>
-                  <span className="text-sm font-medium text-gray-900">{BASIS_LABELS[basis]}</span>
-                  <p className="text-xs text-gray-400">
-                    {basis === 'LIST_PRICE' && 'Published or catalog price before any discounting'}
-                    {basis === 'AVERAGE_MARKET_PRICE' && 'Typical price paid by buyers across channels (street price)'}
-                    {basis === 'CUSTOM' && 'User-defined basis — you are responsible for consistency across all benchmarks'}
+                  <span className="text-xs font-medium text-gray-900">{BASIS_LABELS[basis]}</span>
+                  <p className="text-xs text-gray-400 leading-tight">
+                    {basis === 'LIST_PRICE' && 'Published/catalog price before discounting'}
+                    {basis === 'AVERAGE_MARKET_PRICE' && 'Typical price paid across channels (street price)'}
+                    {basis === 'CUSTOM' && 'User-defined — ensure consistency across all benchmarks'}
                   </p>
                 </div>
               </label>
             ))}
           </div>
           {priceBasis === 'CUSTOM' && (
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Custom basis description</label>
+            <div className="mt-3">
+              <label className="block text-xs font-medium text-gray-700 mb-1">Custom basis description</label>
               <input
                 type="text"
                 value={priceBasisCustomDesc}
                 onChange={e => setPriceBasisCustomDesc(e.target.value)}
                 placeholder="Describe the price basis used"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
           )}
         </section>
 
-        {/* ── Target Products ── */}
-        <section className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between mb-4">
+        </div>{/* end col 1 */}
+
+        {/* ── COL 2: Target Products ────────────────────────────── */}
+        <div>
+        <section className="bg-white rounded-lg shadow border border-gray-300 p-4">
+          <div className="flex items-center justify-between mb-3">
             <div>
-              <h2 className="text-base font-semibold text-gray-900">Target Products</h2>
-              <p className="text-xs text-gray-500 mt-0.5">Up to 3 products can be priced in a single model run.</p>
+              <h2 className="text-sm font-semibold text-gray-900">Target Products</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Up to 3 products per model run.</p>
             </div>
             {targets.length < 3 && (
-              <button
-                onClick={addTarget}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-              >
-                + Add product
+              <button onClick={addTarget} className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+                + Add
               </button>
             )}
           </div>
-          <div className="space-y-4">
+          <div className="space-y-3">
             {targets.map((target, i) => (
-              <div key={i} className="border border-gray-200 rounded-md p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                    Target {i + 1}
-                  </span>
+              <div key={i} className="border border-gray-200 rounded-md p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Target {i + 1}</span>
                   {targets.length > 1 && (
-                    <button
-                      onClick={() => removeTarget(i)}
-                      className="text-xs text-red-400 hover:text-red-600"
-                    >
+                    <button onClick={() => removeTarget(i)} className="text-xs text-red-400 hover:text-red-600">
                       Remove
                     </button>
                   )}
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Product name</label>
                     <input
                       type="text"
                       value={target.name}
                       onChange={e => updateTarget(i, 'name', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
-                  <div className="flex gap-4">
+                  <div className="flex gap-2">
                     <div className="flex-1">
                       <label className="block text-xs font-medium text-gray-700 mb-1">Use case</label>
                       <select
                         value={target.use_case_type}
                         onChange={e => updateTarget(i, 'use_case_type', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                       >
                         <option value="NPI">New Product Introduction</option>
                         <option value="REPOSITION">Price Repositioning</option>
                       </select>
                     </div>
                     {target.use_case_type === 'REPOSITION' && (
-                      <div className="flex-1">
+                      <div className="w-24">
                         <label className="block text-xs font-medium text-gray-700 mb-1">Current price</label>
                         <input
                           type="number"
                           value={target.current_price}
                           onChange={e => updateTarget(i, 'current_price', e.target.value)}
                           placeholder="0.00"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
                     )}
@@ -388,101 +564,189 @@ export default function Phase1Page() {
             ))}
           </div>
         </section>
+        </div>{/* end col 2 */}
 
-        {/* ── Market Reference Set ── */}
-        <section className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between mb-1">
-            <h2 className="text-base font-semibold text-gray-900">Market Reference Set</h2>
+        {/* ── COL 3: Category Anchor + Market Reference Set ─────── */}
+        <div className="space-y-4">
+
+        {/* Category Anchor + AI Assist */}
+        <section className="bg-white rounded-lg shadow border border-gray-300 p-4">
+          <h2 className="text-sm font-semibold text-gray-900 mb-0.5">Category Anchor</h2>
+          <p className="text-xs text-gray-500 mb-3">
+            Describe a representative product in your category. Used to generate a suggested market reference set and estimate market shares.
+            {targets[0]?.name && targets[0].use_case_type === 'REPOSITION' && (
+              <span className="text-blue-600"> For repositioning, your target product naturally serves as the anchor.</span>
+            )}
+          </p>
+          <textarea
+            value={categoryAnchor}
+            onChange={e => setCategoryAnchor(e.target.value)}
+            placeholder='e.g. "A mid-range consumer laptop targeting home users and students, priced between $600-$1,200, running Windows 11, competing with major brands like Dell, HP, and Lenovo"'
+            rows={2}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 resize-none"
+          />
+          <div className="mt-2 flex items-center gap-3">
             <button
-              onClick={addBenchmark}
-              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              onClick={handleGenerateBenchmarks}
+              disabled={generatingBenchmarks || !categoryAnchor.trim()}
+              className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
             >
-              + Add product
+              {generatingBenchmarks ? (
+                <>
+                  <span className="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                '✦ Generate Market Reference Set'
+              )}
+            </button>
+            <span className="text-xs text-gray-400">AI-suggested products will appear below for review</span>
+          </div>
+          {aiError && <div className="mt-2 text-xs text-red-600">{aiError}</div>}
+        </section>
+
+        {/* Market Reference Set */}
+        <section className="bg-white rounded-lg shadow border border-gray-300 p-4">
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="text-sm font-semibold text-gray-900">Market Reference Set</h2>
+            <button onClick={addBenchmark} className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+              + Add manually
             </button>
           </div>
-          <p className="text-xs text-gray-500 mb-4">
+          <p className="text-xs text-gray-500 mb-3">
             {priceBasis
-              ? `Prices should be entered as ${BASIS_LABELS[priceBasis as BenchmarkPriceBasis]}.`
-              : 'Declare a Benchmark Price Basis above before entering prices.'}
-            {' '}Market share figures are SME best estimates and do not need to sum to exactly 100%.
+              ? `Prices as ${BASIS_LABELS[priceBasis as BenchmarkPriceBasis]}.`
+              : 'Declare a Benchmark Price Basis first.'}
+            {' '}Market share figures are SME estimates — no need to sum to 100%.
           </p>
 
-          {/* Table header */}
-          <div className="grid grid-cols-12 gap-2 mb-2 px-1">
-            <div className="col-span-5 text-xs font-medium text-gray-500">Product name</div>
-            <div className="col-span-3 text-xs font-medium text-gray-500">
-              Price ({currency || 'USD'})
+          {hasPendingSuggestions && (
+            <div className="mb-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-md text-xs text-blue-700">
+              ✦ Review AI-suggested products below. Enter a price and click Accept to add to your reference set.
             </div>
-            <div className="col-span-3 text-xs font-medium text-gray-500">Market share %</div>
-            <div className="col-span-1" />
+          )}
+
+          {/* Table header */}
+          <div className="grid gap-2 mb-1.5 px-1" style={{ gridTemplateColumns: '1fr 76px 66px 148px' }}>
+            <div className="text-xs font-medium text-gray-500">Product name</div>
+            <div className="text-xs font-medium text-gray-500">Price ({currency || 'USD'})</div>
+            <div className="text-xs font-medium text-gray-500">Mkt share %</div>
+            <div className="text-xs font-medium text-gray-500">Share estimate</div>
           </div>
 
-          <div className="space-y-2">
-            {benchmarks.map((bench, i) => (
-              <div key={i} className="grid grid-cols-12 gap-2 items-center">
-                <div className="col-span-5">
-                  <input
-                    type="text"
-                    value={bench.name}
-                    onChange={e => updateBenchmark(i, 'name', e.target.value)}
-                    placeholder={`Reference product ${i + 1}`}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div className="col-span-3">
-                  <input
-                    type="number"
-                    value={bench.market_price}
-                    onChange={e => updateBenchmark(i, 'market_price', e.target.value)}
-                    placeholder="0.00"
-                    disabled={!priceBasis}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
-                  />
-                </div>
-                <div className="col-span-3">
-                  <input
-                    type="number"
-                    value={bench.market_share_pct}
-                    onChange={e => updateBenchmark(i, 'market_share_pct', e.target.value)}
-                    placeholder="0.0"
-                    min="0"
-                    max="100"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div className="col-span-1 flex justify-center">
-                  {benchmarks.length > 2 && (
-                    <button
-                      onClick={() => removeBenchmark(i)}
-                      className="text-gray-300 hover:text-red-400 text-lg leading-none"
-                    >
-                      ×
-                    </button>
+          <div className="space-y-1.5">
+            {benchmarks.map((bench, i) => {
+              const isPending = bench.aiSuggested && !bench.accepted
+              return (
+                <div
+                  key={i}
+                  className={`rounded-md border p-1.5 ${isPending ? 'border-blue-200 bg-blue-50' : 'border-transparent'}`}
+                >
+                  <div className="grid gap-2 items-center" style={{ gridTemplateColumns: '1fr 76px 66px 148px' }}>
+                    {/* Name */}
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {isPending && <span className="text-xs text-blue-500 font-medium flex-shrink-0">✦</span>}
+                      <input
+                        type="text"
+                        value={bench.name}
+                        onChange={e => updateBenchmark(i, 'name', e.target.value)}
+                        placeholder={`Reference product ${i + 1}`}
+                        className={`w-full px-2 py-1.5 border rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+                          isPending ? 'border-blue-300 bg-white' : 'border-gray-300'
+                        }`}
+                      />
+                    </div>
+                    {/* Price */}
+                    <div>
+                      <input
+                        type="number"
+                        value={bench.market_price}
+                        onChange={e => updateBenchmark(i, 'market_price', e.target.value)}
+                        placeholder="0.00"
+                        disabled={!priceBasis}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
+                      />
+                    </div>
+                    {/* Share input */}
+                    <div>
+                      <input
+                        type="number"
+                        value={bench.market_share_pct}
+                        onChange={e => updateBenchmark(i, 'market_share_pct', e.target.value)}
+                        placeholder="0.0"
+                        min="0"
+                        max="100"
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    {/* Share estimate / actions */}
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {bench.shareLoading ? (
+                        <span className="text-xs text-gray-400">Estimating...</span>
+                      ) : bench.shareConfidence ? (
+                        <div className="flex items-center gap-1">
+                          {bench.shareAiAssisted && (
+                            <span className="text-xs px-1 py-0.5 rounded bg-blue-50 text-blue-400 font-medium">✦ AI</span>
+                          )}
+                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${CONFIDENCE_COLORS[bench.shareConfidence]}`}>
+                            {CONFIDENCE_LABELS[bench.shareConfidence]}
+                          </span>
+                          {bench.shareEstimate != null && (
+                            <span className="text-xs text-gray-500">{bench.shareEstimate}%</span>
+                          )}
+                          {bench.shareSource && (
+                            <span className="text-xs text-gray-400" title={bench.shareSource}>ⓘ</span>
+                          )}
+                        </div>
+                      ) : bench.name.trim() && categoryAnchor.trim() ? (
+                        <button onClick={() => estimateSingleShare(i)} className="text-xs text-blue-600 hover:text-blue-700">
+                          ✦ Estimate
+                        </button>
+                      ) : null}
+                      {!isPending && (
+                        <button onClick={() => removeBenchmark(i)} className="text-gray-300 hover:text-red-400 text-lg leading-none ml-auto">
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {/* Accept/Dismiss bar */}
+                  {isPending && (
+                    <div className="flex items-center justify-end gap-2 mt-1.5 pt-1.5 border-t border-blue-200">
+                      <span className="text-xs text-blue-500 mr-auto">AI suggested — review and accept or dismiss</span>
+                      <button onClick={() => dismissSuggestion(i)} className="text-xs px-2.5 py-1 border border-gray-300 text-gray-500 rounded-md hover:bg-gray-50">
+                        Dismiss
+                      </button>
+                      <button onClick={() => acceptSuggestion(i)} className="text-xs px-2.5 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium">
+                        ✓ Accept
+                      </button>
+                    </div>
                   )}
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
-          {/* Share total */}
           {totalShares > 0 && (
-            <div className={`mt-3 text-xs text-right ${
-              Math.abs(totalShares - 100) < 0.1 ? 'text-green-600' : 'text-gray-400'
-            }`}>
+            <div className={`mt-2 text-xs text-right ${Math.abs(totalShares - 100) < 0.1 ? 'text-green-600' : 'text-gray-400'}`}>
               Total market share: {totalShares.toFixed(1)}%
               {Math.abs(totalShares - 100) < 0.1 && ' ✓'}
             </div>
           )}
         </section>
 
-        {/* ── Error + Save ── */}
+        </div>{/* end col 3 */}
+
+      </div>{/* end grid */}
+
+      {/* Error + Save — full width below grid */}
+      <div className="mt-4 space-y-3 pb-6">
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-md px-4 py-3 text-sm text-red-700">
             {error}
           </div>
         )}
-
-        <div className="flex justify-end pb-8">
+        <div className="flex justify-end">
           <button
             onClick={handleSave}
             disabled={saving}
@@ -491,8 +755,8 @@ export default function Phase1Page() {
             {saving ? 'Saving...' : 'Save & Continue →'}
           </button>
         </div>
-
       </div>
+
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import ProjectList from './ProjectList'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -30,31 +31,7 @@ export default async function DashboardPage() {
         </div>
 
         <div className="bg-white rounded-lg shadow">
-          {!projects || projects.length === 0 ? (
-            <div className="p-8 text-center">
-              <p className="text-gray-500 text-sm">No projects yet.</p>
-              <p className="text-gray-400 text-xs mt-1">Create your first project to get started.</p>
-            </div>
-          ) : (
-            <ul className="divide-y divide-gray-100">
-              {projects.map((project) => (
-                <li key={project.id}>
-                  <Link
-                    href={`/dashboard/projects/${project.id}`}
-                    className="flex items-center justify-between px-6 py-4 hover:bg-gray-50"
-                  >
-                    <div>
-                      <p className="font-medium text-gray-900">{project.name}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{project.status}</p>
-                    </div>
-                    <span className="text-xs text-gray-400">
-                      {new Date(project.updated_at).toLocaleDateString()}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
+          <ProjectList projects={projects ?? []} />
         </div>
       </div>
     </div>

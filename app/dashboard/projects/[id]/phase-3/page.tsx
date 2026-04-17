@@ -768,21 +768,19 @@ export default function Phase3Page() {
             }
           `}</style>
 
-          <div style={{ padding: '0 10px' }}>
-            <input
-              type="range"
-              className="ahp-slider"
-              min={SLIDER_MIN}
-              max={SLIDER_MAX}
-              step={1}
-              value={sliderPos}
-              onChange={e => setSliderPos(Number(e.target.value))}
-            />
-          </div>
+          <input
+            type="range"
+            className="ahp-slider"
+            min={SLIDER_MIN}
+            max={SLIDER_MAX}
+            step={1}
+            value={sliderPos}
+            onChange={e => setSliderPos(Number(e.target.value))}
+          />
 
-          {/* Scale labels — absolutely positioned to align exactly with slider thumb positions */}
-          {/* Positions 0,2,4,6,8,10,12,14,16 map to 0%,12.5%,...,100% of the 0-16 range */}
-          <div style={{ position: 'relative', height: '32px', marginTop: '4px', padding: '0 10px' }}>
+          {/* Scale labels — calc() offsets the thumb radius (10px) so labels track
+              the actual thumb center across the full travel range */}
+          <div style={{ position: 'relative', height: '32px', marginTop: '4px' }}>
             {[
               { pos: 0,  num: '9',  name: 'Extreme' },
               { pos: 2,  num: '7',  name: 'Very Strong' },
@@ -795,17 +793,17 @@ export default function Phase3Page() {
               { pos: 16, num: '9',  name: 'Extreme' },
             ].map(({ pos, num, name }) => {
               const pct = (pos / 16) * 100
+              // Thumb is 20px wide; its center is 10px inset from each track edge.
+              // Offset = 10px - pct% * 20px/100 = 20 * (0.5 - pct/100) px
+              const offset = 20 * (0.5 - pct / 100)
               const isCenter = pos === 8
-              const isFirst = pos === 0
-              const isLast = pos === 16
-              const transform = isFirst ? 'none' : isLast ? 'translateX(-100%)' : 'translateX(-50%)'
               return (
                 <div
                   key={pos}
                   style={{
                     position: 'absolute',
-                    left: `${pct}%`,
-                    transform,
+                    left: `calc(${pct}% + ${offset}px)`,
+                    transform: 'translateX(-50%)',
                     textAlign: 'center',
                     lineHeight: 1.2,
                   }}

@@ -397,20 +397,19 @@ export default function ExternalSurveyPage() {
               }
             `}</style>
 
-            <div style={{ padding: '0 10px' }}>
-              <input
-                type="range"
-                className="ahp-slider"
-                min={SLIDER_MIN}
-                max={SLIDER_MAX}
-                step={1}
-                value={sliderPos}
-                onChange={e => setSliderPos(Number(e.target.value))}
-              />
-            </div>
+            <input
+              type="range"
+              className="ahp-slider"
+              min={SLIDER_MIN}
+              max={SLIDER_MAX}
+              step={1}
+              value={sliderPos}
+              onChange={e => setSliderPos(Number(e.target.value))}
+            />
 
-            {/* Scale labels */}
-            <div style={{ position: 'relative', height: '32px', marginTop: '4px', padding: '0 10px' }}>
+            {/* Scale labels — calc() offsets the thumb radius (10px) so labels track
+                the actual thumb center across the full travel range */}
+            <div style={{ position: 'relative', height: '32px', marginTop: '4px' }}>
               {[
                 { pos: 0,  num: '9', name: 'Extreme' },
                 { pos: 2,  num: '7', name: 'Very Strong' },
@@ -423,14 +422,12 @@ export default function ExternalSurveyPage() {
                 { pos: 16, num: '9', name: 'Extreme' },
               ].map(({ pos, num, name }) => {
                 const pct = (pos / 16) * 100
+                const offset = 20 * (0.5 - pct / 100)
                 const isCenter = pos === 8
-                const isFirst  = pos === 0
-                const isLast   = pos === 16
-                const transform = isFirst ? 'none' : isLast ? 'translateX(-100%)' : 'translateX(-50%)'
                 return (
                   <div
                     key={pos}
-                    style={{ position: 'absolute', left: `${pct}%`, transform, textAlign: 'center', lineHeight: 1.2 }}
+                    style={{ position: 'absolute', left: `calc(${pct}% + ${offset}px)`, transform: 'translateX(-50%)', textAlign: 'center', lineHeight: 1.2 }}
                   >
                     <div style={{ fontSize: '13px', color: isCenter ? '#111827' : '#6b7280', fontWeight: isCenter ? 600 : 400 }}>{num}</div>
                     <div style={{ fontSize: '12px', color: isCenter ? '#111827' : '#6b7280', fontWeight: isCenter ? 600 : 400, whiteSpace: 'nowrap' }}>{name}</div>

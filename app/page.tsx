@@ -243,7 +243,7 @@ export default async function HomePage() {
               {
                 role: 'Consultancies & Agencies',
                 description: 'Scale pricing work across multiple client engagements simultaneously. Consistent methodology, faster delivery, defensible outputs your clients can present to their board — under your name.',
-                detail: 'Your methodology, systematized.',
+                detail: 'Consistent process. Faster delivery. Stronger client outcomes.',
               },
             ].map(({ role, description, detail }) => (
               <div key={role} className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col">

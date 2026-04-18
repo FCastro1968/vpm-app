@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
 
 export default async function HomePage() {
   const supabase = await createClient()
@@ -12,18 +11,15 @@ export default async function HomePage() {
     <div className="min-h-screen bg-white">
 
       {/* ── Nav ────────────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-100">
-        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-          <span className="text-base font-bold text-gray-900 tracking-tight">Value Pricing Model™</span>
+      <header className="sticky top-0 z-50 bg-gray-950 border-b border-gray-800">
+        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+          <span className="text-base font-bold text-white tracking-tight">Value Pricing Model™</span>
           <div className="flex items-center gap-6">
-            <a href="#how-it-works" className="hidden sm:block text-sm text-gray-500 hover:text-gray-900">How it works</a>
-            <a href="#outputs" className="hidden sm:block text-sm text-gray-500 hover:text-gray-900">Outputs</a>
-            <a href="#who" className="hidden sm:block text-sm text-gray-500 hover:text-gray-900">Who it's for</a>
-            <Link href="/login" className="text-sm text-gray-500 hover:text-gray-900">Sign in</Link>
-            <Link
-              href="/request-access"
-              className="px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
-            >
+            <a href="#how-it-works" className="hidden sm:block text-sm text-gray-400 hover:text-white transition-colors">How it works</a>
+            <a href="#outputs" className="hidden sm:block text-sm text-gray-400 hover:text-white transition-colors">Outputs</a>
+            <a href="#who" className="hidden sm:block text-sm text-gray-400 hover:text-white transition-colors">Who it's for</a>
+            <Link href="/login" className="text-sm text-gray-400 hover:text-white transition-colors">Sign in</Link>
+            <Link href="/request-access" className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-500 transition-colors">
               Request Access
             </Link>
           </div>
@@ -48,30 +44,15 @@ export default async function HomePage() {
           Backed by market data and expert input — not intuition.
         </p>
         <div className="flex items-center justify-center gap-4 mb-16">
-          <Link
-            href="/request-access"
-            className="px-7 py-3.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 shadow-sm"
-          >
+          <Link href="/request-access" className="px-7 py-3.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 shadow-sm">
             Request Access
           </Link>
-          <a
-            href="#outputs"
-            className="px-7 py-3.5 text-gray-700 text-sm font-medium rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-          >
+          <a href="#outputs" className="px-7 py-3.5 text-gray-700 text-sm font-medium rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50">
             See the output →
           </a>
         </div>
-
-        {/* Hero screenshot — Price Recommendations */}
         <div className="rounded-xl border border-gray-200 shadow-xl overflow-hidden mx-auto max-w-4xl">
-          <Image
-            src="/screenshots/PriceRecommendations.png"
-            alt="Price Recommendations output showing model-implied price with statistical and market envelope ranges"
-            width={1200}
-            height={600}
-            className="w-full"
-            priority
-          />
+          <img src="/screenshots/PriceRecommendations.png" alt="Price Recommendations" className="w-full" />
         </div>
       </section>
 
@@ -114,7 +95,7 @@ export default async function HomePage() {
           {/* Output 1 — Value Map */}
           <div className="flex flex-col lg:flex-row items-center gap-12 mb-24">
             <div className="lg:w-2/5 shrink-0">
-              <div className="inline-flex items-center gap-2 text-xs font-semibold text-blue-600 uppercase tracking-wider mb-3">Output 01</div>
+              <div className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-3">Output 01</div>
               <h3 className="text-2xl font-bold text-gray-900 mb-4">See exactly where you stand in the market</h3>
               <p className="text-gray-500 leading-relaxed mb-4">
                 The Value Map plots every product in your competitive set by model-implied price vs. actual market price.
@@ -125,20 +106,14 @@ export default async function HomePage() {
               </p>
             </div>
             <div className="lg:w-3/5 rounded-xl border border-gray-200 shadow-lg overflow-hidden">
-              <Image
-                src="/screenshots/ValueMap.png"
-                alt="Value Map showing competitive positioning with fair-value diagonal line"
-                width={900}
-                height={500}
-                className="w-full"
-              />
+              <img src="/screenshots/ValueMap.png" alt="Value Map" className="w-full" />
             </div>
           </div>
 
           {/* Output 2 — Factor Contributions */}
           <div className="flex flex-col lg:flex-row-reverse items-center gap-12 mb-24">
             <div className="lg:w-2/5 shrink-0">
-              <div className="inline-flex items-center gap-2 text-xs font-semibold text-blue-600 uppercase tracking-wider mb-3">Output 02</div>
+              <div className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-3">Output 02</div>
               <h3 className="text-2xl font-bold text-gray-900 mb-4">Understand what the market actually values</h3>
               <p className="text-gray-500 leading-relaxed mb-4">
                 Factor Contributions breaks down each product's price into the individual features and attributes that
@@ -150,20 +125,14 @@ export default async function HomePage() {
               </p>
             </div>
             <div className="lg:w-3/5 rounded-xl border border-gray-200 shadow-lg overflow-hidden">
-              <Image
-                src="/screenshots/FactorContributions.png"
-                alt="Factor Contributions lollipop chart showing dollar contribution per factor"
-                width={900}
-                height={500}
-                className="w-full"
-              />
+              <img src="/screenshots/FactorContributions.png" alt="Factor Contributions" className="w-full" />
             </div>
           </div>
 
           {/* Output 3 — Competitive Positioning */}
           <div className="flex flex-col lg:flex-row items-center gap-12 mb-24">
             <div className="lg:w-2/5 shrink-0">
-              <div className="inline-flex items-center gap-2 text-xs font-semibold text-blue-600 uppercase tracking-wider mb-3">Output 03</div>
+              <div className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-3">Output 03</div>
               <h3 className="text-2xl font-bold text-gray-900 mb-4">A complete competitive picture in one table</h3>
               <p className="text-gray-500 leading-relaxed mb-4">
                 The Competitive Positioning table ranks every product by Value Index — a normalized score of how much
@@ -174,38 +143,25 @@ export default async function HomePage() {
               </p>
             </div>
             <div className="lg:w-3/5 rounded-xl border border-gray-200 shadow-lg overflow-hidden">
-              <Image
-                src="/screenshots/CompetitivePositioning.png"
-                alt="Competitive Positioning table with Value Index, Market Price, Model Price and Gap"
-                width={900}
-                height={500}
-                className="w-full"
-              />
+              <img src="/screenshots/CompetitivePositioning.png" alt="Competitive Positioning" className="w-full" />
             </div>
           </div>
 
-          {/* Output 4 — Advanced Diagnostics */}
+          {/* Output 4 — Diagnostics */}
           <div className="flex flex-col lg:flex-row-reverse items-center gap-12">
             <div className="lg:w-2/5 shrink-0">
-              <div className="inline-flex items-center gap-2 text-xs font-semibold text-blue-600 uppercase tracking-wider mb-3">Output 04</div>
+              <div className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-3">Output 04</div>
               <h3 className="text-2xl font-bold text-gray-900 mb-4">Validate the model before you commit to the number</h3>
               <p className="text-gray-500 leading-relaxed mb-4">
                 Advanced diagnostics — sensitivity analysis, market-implied weight comparison, and respondent-level
                 model analysis — let you stress-test the recommendation before it goes to a client or a board.
               </p>
               <p className="text-gray-500 leading-relaxed">
-                Know whether the consensus is driven by broad agreement or one or two dominant voices. Identify which
-                factors are load-bearing and which are candidates for exclusion.
+                Know whether the consensus is driven by broad agreement or one or two dominant voices.
               </p>
             </div>
             <div className="lg:w-3/5 rounded-xl border border-gray-200 shadow-lg overflow-hidden">
-              <Image
-                src="/screenshots/SensitivityAnalysis.png"
-                alt="Sensitivity Analysis showing factor impact on model price"
-                width={900}
-                height={500}
-                className="w-full"
-              />
+              <img src="/screenshots/SensitivityAnalysis.png" alt="Sensitivity Analysis" className="w-full" />
             </div>
           </div>
         </div>
@@ -244,7 +200,7 @@ export default async function HomePage() {
         <div className="max-w-6xl mx-auto px-6">
           <div className="flex flex-col lg:flex-row items-center gap-12">
             <div className="lg:w-2/5 shrink-0">
-              <div className="inline-flex items-center gap-2 text-xs font-semibold text-blue-600 uppercase tracking-wider mb-3">AI Assist</div>
+              <div className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-3">AI Assist</div>
               <h2 className="text-2xl font-bold text-gray-900 mb-4">From category description to full competitive framework in minutes</h2>
               <p className="text-gray-500 leading-relaxed mb-4">
                 Describe your product category and let AI suggest your competitive benchmark set, factor framework,
@@ -255,13 +211,7 @@ export default async function HomePage() {
               </p>
             </div>
             <div className="lg:w-3/5 rounded-xl border border-gray-200 shadow-lg overflow-hidden">
-              <Image
-                src="/screenshots/CategoryAnchor_AI.png"
-                alt="AI-powered category anchor and benchmark suggestion interface"
-                width={900}
-                height={500}
-                className="w-full"
-              />
+              <img src="/screenshots/CategoryAnchor_AI.png" alt="AI-powered benchmark suggestions" className="w-full" />
             </div>
           </div>
         </div>
@@ -313,10 +263,7 @@ export default async function HomePage() {
           <p className="text-gray-400 text-lg mb-10 max-w-lg mx-auto leading-relaxed">
             Access is by invitation. Tell us about your use case and we'll be in touch within one business day.
           </p>
-          <Link
-            href="/request-access"
-            className="inline-block px-8 py-4 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 shadow-sm"
-          >
+          <Link href="/request-access" className="inline-block px-8 py-4 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 shadow-sm">
             Request Access
           </Link>
           <p className="mt-4 text-xs text-gray-600">

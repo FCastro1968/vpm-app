@@ -64,7 +64,7 @@ export default async function HomePage() {
             expensive consultants, or not at all.
           </h2>
           <p className="text-gray-400 text-lg leading-relaxed max-w-2xl mx-auto mb-12">
-            A McKinsey pricing engagement runs $200K–$500K. A boutique firm costs $25K–$100K per project.
+            Bringing in a major consultancy means five-to-six figure invoices and months of lead time.
             Spreadsheets and intuition leave you exposed when a board or client asks "how did you get to that number?"
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-left">
@@ -237,8 +237,8 @@ export default async function HomePage() {
               },
               {
                 role: 'Pricing & Strategy Teams',
-                description: 'Stop paying $25K–$100K per engagement to outside firms for work your team can now own. Build a repeatable, auditable pricing process across every product launch, repositioning, and portfolio review.',
-                detail: 'Bring the methodology in-house. Keep the rigor.',
+                description: 'Stop paying five to six figures per engagement to outside firms for work your team can now own. Build a repeatable, auditable pricing process across every product launch, repositioning, and portfolio review.',
+                detail: 'Bring the methodology in-house. Keep the rigor. Lose the five-to-six figure invoice.',
               },
               {
                 role: 'Consultancies & Agencies',

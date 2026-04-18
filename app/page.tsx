@@ -13,7 +13,7 @@ export default async function HomePage() {
       {/* ── Nav ────────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-50 bg-gray-950 border-b border-gray-800">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <span className="text-lg font-bold text-white tracking-tight">Value Pricing Model™</span>
+          <span className="text-xl font-bold text-white tracking-tight">Value Pricing Model™</span>
           <div className="flex items-center gap-6">
             <a href="#how-it-works" className="hidden sm:block text-base text-gray-400 hover:text-white transition-colors">How it works</a>
             <a href="#outputs" className="hidden sm:block text-base text-gray-400 hover:text-white transition-colors">Outputs</a>
@@ -180,7 +180,7 @@ export default async function HomePage() {
             {[
               { phase: '01', title: 'Scope Definition', body: 'Define your target product, geographic scope, price basis, and competitive reference set. AI suggests benchmarks and estimates market share.' },
               { phase: '02', title: 'Factor Framework', body: 'Identify the factors that drive purchase decisions and define performance levels. AI suggests factors, levels, and benchmark assignments — optional, always editable.' },
-              { phase: '03', title: 'Preference Assessment', body: 'Structured pairwise comparison survey captures expert judgment on factor importance and performance. Supports internal and distributed respondents.' },
+              { phase: '03', title: 'Preference Assessment', body: 'A structured survey captures expert judgment on factor importance and performance. Supports internal and distributed respondents.' },
               { phase: '04', title: 'Coherence Review', body: 'Automatic consistency scoring flags survey responses that may need review before they influence the model.' },
               { phase: '05', title: 'Value Pricing Model', body: 'Weighted optimization derives factor importance scores, performance scores, and a model-implied price — with full diagnostic transparency.' },
               { phase: '06', title: 'Analysis & Output', body: 'Value Map, Factor Contributions, Competitive Positioning, and Price Recommendations — ready for client delivery or internal review.' },

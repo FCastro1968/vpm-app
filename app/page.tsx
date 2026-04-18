@@ -95,7 +95,7 @@ export default async function HomePage() {
           {/* Output 1 — Value Map */}
           <div className="flex flex-col lg:flex-row items-center gap-12 mb-24">
             <div className="lg:w-2/5 shrink-0">
-              <div className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-3">Output 01</div>
+              <div className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-3">Value Map</div>
               <h3 className="text-2xl font-bold text-gray-900 mb-4">See exactly where you stand in the market</h3>
               <p className="text-gray-500 leading-relaxed mb-4">
                 The Value Map plots every product in your competitive set by model-implied price vs. actual market price.
@@ -113,7 +113,7 @@ export default async function HomePage() {
           {/* Output 2 — Factor Contributions */}
           <div className="flex flex-col lg:flex-row-reverse items-center gap-12 mb-24">
             <div className="lg:w-2/5 shrink-0">
-              <div className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-3">Output 02</div>
+              <div className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-3">Factor Contributions</div>
               <h3 className="text-2xl font-bold text-gray-900 mb-4">Understand what the market actually values</h3>
               <p className="text-gray-500 leading-relaxed mb-4">
                 Factor Contributions breaks down each product's price into the individual features and attributes that
@@ -132,7 +132,7 @@ export default async function HomePage() {
           {/* Output 3 — Competitive Positioning */}
           <div className="flex flex-col lg:flex-row items-center gap-12 mb-24">
             <div className="lg:w-2/5 shrink-0">
-              <div className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-3">Output 03</div>
+              <div className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-3">Competitive Positioning</div>
               <h3 className="text-2xl font-bold text-gray-900 mb-4">A complete competitive picture in one table</h3>
               <p className="text-gray-500 leading-relaxed mb-4">
                 The Competitive Positioning table ranks every product by Value Index — a normalized score of how much
@@ -150,7 +150,7 @@ export default async function HomePage() {
           {/* Output 4 — Diagnostics */}
           <div className="flex flex-col lg:flex-row-reverse items-center gap-12">
             <div className="lg:w-2/5 shrink-0">
-              <div className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-3">Output 04</div>
+              <div className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-3">Advanced Diagnostics</div>
               <h3 className="text-2xl font-bold text-gray-900 mb-4">Validate the model before you commit to the number</h3>
               <p className="text-gray-500 leading-relaxed mb-4">
                 Advanced diagnostics — sensitivity analysis, market-implied weight comparison, and respondent-level

@@ -65,7 +65,7 @@ export default async function HomePage() {
         {/* Hero screenshot — Price Recommendations */}
         <div className="rounded-xl border border-gray-200 shadow-xl overflow-hidden mx-auto max-w-4xl">
           <Image
-            src="/screenshots/Price Recommendations.png"
+            src="/screenshots/PriceRecommendations.png"
             alt="Price Recommendations output showing model-implied price with statistical and market envelope ranges"
             width={1200}
             height={600}
@@ -88,9 +88,9 @@ export default async function HomePage() {
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-left">
             {[
-              { stat: '1/100th', label: 'the cost of a boutique consulting engagement' },
-              { stat: '94.2%', label: 'model fit achieved on real product categories' },
               { stat: '6 phases', label: 'from competitive scoping to price recommendation' },
+              { stat: '3 use cases', label: 'new product pricing, repositioning, and portfolio gap analysis' },
+              { stat: 'Fully auditable', label: 'every recommendation traces back to market data and expert input' },
             ].map(({ stat, label }) => (
               <div key={stat} className="bg-gray-900 rounded-xl p-6 border border-gray-800">
                 <p className="text-3xl font-bold text-white mb-1">{stat}</p>
@@ -175,7 +175,7 @@ export default async function HomePage() {
             </div>
             <div className="lg:w-3/5 rounded-xl border border-gray-200 shadow-lg overflow-hidden">
               <Image
-                src="/screenshots/Competitive Positioning.png"
+                src="/screenshots/CompetitivePositioning.png"
                 alt="Competitive Positioning table with Value Index, Market Price, Model Price and Gap"
                 width={900}
                 height={500}
@@ -200,7 +200,7 @@ export default async function HomePage() {
             </div>
             <div className="lg:w-3/5 rounded-xl border border-gray-200 shadow-lg overflow-hidden">
               <Image
-                src="/screenshots/Sensitivity Analysis.png"
+                src="/screenshots/SensitivityAnalysis.png"
                 alt="Sensitivity Analysis showing factor impact on model price"
                 width={900}
                 height={500}

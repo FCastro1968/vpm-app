@@ -30,10 +30,13 @@ export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
   if (
     !user &&
+    pathname !== '/' &&
     !pathname.startsWith('/login') &&
     !pathname.startsWith('/auth') &&
     !pathname.startsWith('/survey') &&
-    !pathname.startsWith('/api/survey')
+    !pathname.startsWith('/request-access') &&
+    !pathname.startsWith('/api/survey') &&
+    !pathname.startsWith('/api/request-access')
   ) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'

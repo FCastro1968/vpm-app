@@ -14,66 +14,60 @@ export default async function BillingPage() {
 
       {/* Current plan */}
       <section className="bg-white rounded-lg border border-gray-200 p-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-sm font-semibold text-gray-900 mb-1">Current Plan</h2>
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
-              Starter
-            </span>
-          </div>
-          <button
-            disabled
-            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md opacity-50 cursor-not-allowed"
-            title="Upgrade coming soon"
-          >
-            Upgrade to Professional
-          </button>
+        <h2 className="text-sm font-semibold text-gray-900 mb-4">Your Account</h2>
+        <div className="flex items-center gap-3 mb-5">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700">
+            Active
+          </span>
+          <span className="text-sm text-gray-500">Managed access — your plan is configured by your account administrator.</span>
         </div>
-
-        <div className="mt-5 grid grid-cols-2 gap-4 max-w-sm">
+        <div className="grid grid-cols-2 gap-4 max-w-sm">
           <div className="bg-gray-50 rounded-lg p-4">
             <p className="text-xs text-gray-500 mb-1">Projects</p>
             <p className="text-2xl font-bold text-gray-900">{projectCount}</p>
-            <p className="text-xs text-gray-400 mt-0.5">of 3 included</p>
-          </div>
-          <div className="bg-gray-50 rounded-lg p-4">
-            <p className="text-xs text-gray-500 mb-1">Seats</p>
-            <p className="text-2xl font-bold text-gray-900">1</p>
-            <p className="text-xs text-gray-400 mt-0.5">of 1 included</p>
+            <p className="text-xs text-gray-400 mt-0.5">active projects</p>
           </div>
         </div>
       </section>
 
-      {/* Plan comparison */}
+      {/* Capabilities */}
       <section className="bg-white rounded-lg border border-gray-200 p-6">
-        <h2 className="text-sm font-semibold text-gray-900 mb-4">Plan Comparison</h2>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-100">
-              <th className="text-left py-2 text-xs font-medium text-gray-500 w-1/2">Feature</th>
-              <th className="text-center py-2 text-xs font-medium text-gray-500">Starter</th>
-              <th className="text-center py-2 text-xs font-medium text-blue-600">Professional</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {[
-              ['Projects',         '3',         'Unlimited'],
-              ['Seats',            '1',         '5'],
-              ['PDF export',       '✓',         '✓'],
-              ['AI assist',        '—',         '✓'],
-              ['All exports',      '—',         '✓'],
-              ['Survey invites',   '—',         '✓'],
-              ['Priority support', '—',         '✓'],
-            ].map(([feature, starter, pro]) => (
-              <tr key={feature}>
-                <td className="py-2.5 text-gray-700">{feature}</td>
-                <td className="py-2.5 text-center text-gray-500">{starter}</td>
-                <td className="py-2.5 text-center text-blue-600 font-medium">{pro}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <p className="mt-4 text-xs text-gray-400">Stripe billing coming soon. Reach out to <a href="mailto:support@valuepricing.org" className="underline">support@valuepricing.org</a> to discuss Professional access.</p>
+        <h2 className="text-sm font-semibold text-gray-900 mb-4">Platform Capabilities</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {[
+            'Six-phase pricing methodology',
+            'Unlimited reference products',
+            'Up to 3 target products per project',
+            'Distributed surveys with invite emails',
+            'Advanced diagnostics (Tools 2, 3, 4)',
+            'PDF export',
+            'AI assist (benchmark & factor suggestions)',
+            'AI diagnostic explanations',
+            'Coherence scoring & review',
+            'Value Map & Factor Contributions',
+            'Price recommendations with ranges',
+            'Sensitivity analysis',
+          ].map(item => (
+            <div key={item} className="flex items-center gap-2 text-sm text-gray-700">
+              <svg className="w-4 h-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              {item}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Contact */}
+      <section className="bg-white rounded-lg border border-gray-200 p-6">
+        <h2 className="text-sm font-semibold text-gray-900 mb-1">Questions or changes?</h2>
+        <p className="text-sm text-gray-500">
+          Contact us at{' '}
+          <a href="mailto:support@valuepricing.org" className="text-blue-600 hover:underline">
+            support@valuepricing.org
+          </a>{' '}
+          for billing inquiries, seat changes, or plan upgrades.
+        </p>
       </section>
     </div>
   )

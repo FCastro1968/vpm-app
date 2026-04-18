@@ -13,13 +13,13 @@ export default async function HomePage() {
       {/* ── Nav ────────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-50 bg-gray-950 border-b border-gray-800">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <span className="text-base font-bold text-white tracking-tight">Value Pricing Model™</span>
+          <span className="text-lg font-bold text-white tracking-tight">Value Pricing Model™</span>
           <div className="flex items-center gap-6">
-            <a href="#how-it-works" className="hidden sm:block text-sm text-gray-400 hover:text-white transition-colors">How it works</a>
-            <a href="#outputs" className="hidden sm:block text-sm text-gray-400 hover:text-white transition-colors">Outputs</a>
-            <a href="#who" className="hidden sm:block text-sm text-gray-400 hover:text-white transition-colors">Who it's for</a>
-            <Link href="/login" className="text-sm text-gray-400 hover:text-white transition-colors">Sign in</Link>
-            <Link href="/request-access" className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-500 transition-colors">
+            <a href="#how-it-works" className="hidden sm:block text-base text-gray-400 hover:text-white transition-colors">How it works</a>
+            <a href="#outputs" className="hidden sm:block text-base text-gray-400 hover:text-white transition-colors">Outputs</a>
+            <a href="#who" className="hidden sm:block text-base text-gray-400 hover:text-white transition-colors">Who it's for</a>
+            <Link href="/login" className="text-base text-gray-400 hover:text-white transition-colors">Sign in</Link>
+            <Link href="/request-access" className="px-4 py-2 bg-blue-600 text-white text-base font-semibold rounded-lg hover:bg-blue-500 transition-colors">
               Request Access
             </Link>
           </div>
@@ -41,7 +41,7 @@ export default async function HomePage() {
           and identifying gaps in your portfolio.
         </p>
         <p className="text-base text-gray-400 max-w-xl mx-auto mb-10">
-          Backed by market data and expert input — not intuition.
+          Backed by market data and expert input — not intuition. AI-assisted setup gets you from a blank slate to a full competitive framework in minutes.
         </p>
         <div className="flex items-center justify-center gap-4 mb-16">
           <Link href="/request-access" className="px-7 py-3.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 shadow-sm">
@@ -179,7 +179,7 @@ export default async function HomePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
               { phase: '01', title: 'Scope Definition', body: 'Define your target product, geographic scope, price basis, and competitive reference set. AI suggests benchmarks and estimates market share.' },
-              { phase: '02', title: 'Factor Framework', body: 'Identify the factors that drive purchase decisions and define performance levels. AI suggests factors, levels, and benchmark assignments.' },
+              { phase: '02', title: 'Factor Framework', body: 'Identify the factors that drive purchase decisions and define performance levels. AI suggests factors, levels, and benchmark assignments — optional, always editable.' },
               { phase: '03', title: 'Preference Assessment', body: 'Structured pairwise comparison survey captures expert judgment on factor importance and performance. Supports internal and distributed respondents.' },
               { phase: '04', title: 'Coherence Review', body: 'Automatic consistency scoring flags survey responses that may need review before they influence the model.' },
               { phase: '05', title: 'Value Pricing Model', body: 'Weighted optimization derives factor importance scores, performance scores, and a model-implied price — with full diagnostic transparency.' },
@@ -200,14 +200,16 @@ export default async function HomePage() {
         <div className="max-w-6xl mx-auto px-6">
           <div className="flex flex-col lg:flex-row items-center gap-12">
             <div className="lg:w-2/5 shrink-0">
-              <div className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-3">AI Assist</div>
+              <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 text-xs font-semibold mb-4">
+                ✦ Optional AI Assist
+              </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-4">From category description to full competitive framework in minutes</h2>
               <p className="text-gray-500 leading-relaxed mb-4">
                 Describe your product category and let AI suggest your competitive benchmark set, factor framework,
                 performance levels, and product assignments — complete with market share estimates and confidence ratings.
               </p>
               <p className="text-gray-500 leading-relaxed">
-                Every AI suggestion is editable and auditable. You stay in control of the methodology.
+                Every AI suggestion is optional, editable, and auditable. You stay in full control of the methodology.
               </p>
             </div>
             <div className="lg:w-3/5 rounded-xl border border-gray-200 shadow-lg overflow-hidden">

@@ -148,6 +148,9 @@ export default function Phase4Page() {
   const [surveyExpiresAt,   setSurveyExpiresAt]    = useState<string>('')
   const [addingResp,        setAddingResp]         = useState(false)
   const [rosterError,       setRosterError]        = useState('')
+  const [projectName,       setProjectName]        = useState('')
+  const [sendingInvite,     setSendingInvite]      = useState<Set<string>>(new Set())
+  const [inviteStatus,      setInviteStatus]       = useState<Record<string, 'sent' | 'error'>>({})
 
   // ── Load ──────────────────────────────────────────────────────────────────
 
@@ -156,15 +159,16 @@ export default function Phase4Page() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user?.email) setCurrentUserEmail(user.email)
 
-      // Load project status + survey deadline
+      // Load project status, name + survey deadline
       const { data: project } = await supabase
         .from('project')
-        .select('status, survey_expires_at')
+        .select('status, survey_expires_at, name')
         .eq('id', projectId)
         .single()
 
       const status = project?.status ?? ''
       setProjectStatus(status)
+      setProjectName(project?.name ?? '')
       if (project?.survey_expires_at) {
         // Convert to YYYY-MM-DD for the date input
         setSurveyExpiresAt(project.survey_expires_at.slice(0, 10))
@@ -512,6 +516,8 @@ export default function Phase4Page() {
       setNewRespName('')
       setNewRespEmail('')
       setNewRespRole('')
+      // Auto-send invite
+      sendInvite(data).catch(() => {})
     } catch (err: any) {
       setRosterError(err.message ?? 'Failed to add respondent')
     } finally {
@@ -540,6 +546,33 @@ export default function Phase4Page() {
   function copyLink(token: string) {
     const url = `${window.location.origin}/survey/${token}`
     navigator.clipboard.writeText(url)
+  }
+
+  async function sendInvite(respondent: DistributedRespondent) {
+    setSendingInvite(prev => new Set(prev).add(respondent.id))
+    setInviteStatus(prev => { const n = { ...prev }; delete n[respondent.id]; return n })
+    try {
+      const surveyUrl = `${window.location.origin}/survey/${respondent.token}`
+      const deadline  = surveyExpiresAt
+        ? new Date(surveyExpiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+        : null
+      const res = await fetch('/api/send-survey-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          respondentName:  respondent.name,
+          respondentEmail: respondent.email,
+          surveyUrl,
+          projectName,
+          deadline,
+        }),
+      })
+      setInviteStatus(prev => ({ ...prev, [respondent.id]: res.ok ? 'sent' : 'error' }))
+    } catch {
+      setInviteStatus(prev => ({ ...prev, [respondent.id]: 'error' }))
+    } finally {
+      setSendingInvite(prev => { const n = new Set(prev); n.delete(respondent.id); return n })
+    }
   }
 
   // ── Navigate back to Phase 3 at a specific section ───────────────────────
@@ -653,9 +686,25 @@ export default function Phase4Page() {
                               const label = mins < 1 ? '< 1 min' : mins < 60 ? `${mins} min` : `${Math.floor(mins / 60)}h ${mins % 60}m`
                               return <span className="text-xs text-gray-400">{label}</span>
                             })()}
+                            {inviteStatus[r.id] === 'sent' && (
+                              <span className="text-xs text-green-600">Invite sent ✓</span>
+                            )}
+                            {inviteStatus[r.id] === 'error' && (
+                              <span className="text-xs text-red-500">Send failed</span>
+                            )}
+                            {!r.submitted_at && (
+                              <button
+                                onClick={() => sendInvite(r)}
+                                disabled={sendingInvite.has(r.id)}
+                                className="text-xs text-blue-600 hover:text-blue-700 disabled:opacity-40"
+                                title="Send survey invite email"
+                              >
+                                {sendingInvite.has(r.id) ? '…' : inviteStatus[r.id] === 'sent' ? 'Resend' : 'Send invite'}
+                              </button>
+                            )}
                             <button
                               onClick={() => copyLink(r.token)}
-                              className="text-xs text-blue-600 hover:text-blue-700"
+                              className="text-xs text-gray-400 hover:text-blue-600"
                               title="Copy survey link to clipboard"
                             >
                               Copy link
@@ -711,7 +760,7 @@ export default function Phase4Page() {
                       disabled={addingResp || !newRespName.trim() || !newRespEmail.trim()}
                       className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50"
                     >
-                      {addingResp ? '…' : '+ Add'}
+                      {addingResp ? '…' : '+ Add & Invite'}
                     </button>
                   </div>
                   <div className="mt-3 flex items-center gap-2">

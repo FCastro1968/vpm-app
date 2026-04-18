@@ -14,7 +14,7 @@ Priority tiers:
 | Pri | Item | Notes |
 |-----|------|-------|
 | 🔴 | Demo / sample project | Pre-loaded read-only project for new accounts (e.g., a CO2 incubator or similar). Lets a prospect experience the full output — Value Map, lollipop, PDF — before building anything. Critical for self-serve sales. |
-| 🔴 | Contextual help tooltips | Phase 2 factor/level definitions, Phase 3 slider scale, Phase 5 diagnostic flags, Phase 6 value map — each has non-obvious inputs. Lightweight `?` icon popovers, no separate doc site required. |
+| 🔴 | ✓ Contextual help tooltips | DONE — HelpTip component (click-to-open popover, outside-click-to-close). Phase 2: factor name, performance levels ordering, ordinal/nominal badge, coverage score. Phase 3: context-aware comparison prompt (attribute vs level). Phase 5: Weighted R², Benchmark Outlier Review, Sensitivity Analysis. Phase 6: Value Map 5-dot strip, Factor Contributions lollipop, Price Recommendations ranges. |
 | 🟡 | In-app guided tour | First-time-user walkthrough (coach marks) covering Phase 1 → 2 → 3 → 5 → 6. Dismissible, re-triggerable from Help menu. |
 
 ---
@@ -53,6 +53,8 @@ Priority tiers:
 | 🟡 | ✓ Jump to section navigation | DONE — `?goto=` param from Phase 4 review links navigates to specific factor in Phase 3. |
 | 🟡 | ✓ Survey deadline / expiration | DONE — project-level `survey_expires_at` date field in Phase 4 External Respondents panel. API returns 410 when past deadline; survey page shows friendly "This survey has closed" message. |
 | 🟡 | ✓ Respondent role / expertise tagging | DONE — optional Role field when adding a distributed respondent; stored in `respondent.role`; shown as a blue badge in the respondent list. Feeds respondent-level model analysis when built. |
+| 🟡 | ✓ Duplicate respondent prevention | DONE — email+project+mode uniqueness check before insert; shows inline error if already present. |
+| 🟡 | ✓ Survey completion timing | DONE — `survey_started_at` set on first pairwise response (Q1→Q2 transition) via resilient separate query in POST handler; Phase 4 panel shows elapsed time next to Submitted badge. Requires DB migration: `ALTER TABLE respondent ADD COLUMN IF NOT EXISTS survey_started_at timestamptz;` |
 | 🟢 | ✓ Distributed survey mode | DONE — token-based external survey at `/survey/[token]`; managed from Phase 4 External Respondents panel; unsubmitted respondents auto-excluded from analysis. |
 | 🟢 | ✓ Facilitator unlock for re-submission | DONE — unlock button in Phase 4 panel clears submitted_at; respondent resubmits via original link. |
 
@@ -81,8 +83,9 @@ Priority tiers:
 | 🟡 | ✓ Price Delta % in sensitivity analysis | DONE — signed % column added to sensitivity table showing model price change when each factor is excluded. |
 | 🟢 | ✓ Market-Implied Weight Analysis (Advanced Diagnostics Tool 3) | DONE — Nelder-Mead solver finds market-implied weights via `/api/solver?endpoint=market-implied-weights`; side-by-side comparison table; gap thresholds scale to equal-share weight (neutral <25%, amber 25–65%, red >65% of 100/N pp); R²-based footer conclusion (material if gap >3pp); rank condition check gates the run button. |
 | 🟢 | Multi-segment / Multi-geography model | 🏗 Run the same framework against multiple market segments or geographies as separate model instances. Each instance has its own benchmark set and market prices. Phase 6 shows side-by-side price recommendations and value map overlay across segments. Useful when the same product positions differently by region or customer type. |
-| 🟢 | Respondent-level model analysis (Advanced Diagnostics Tool 4) | 🏗 Run the full solver independently for each respondent's individual pairwise responses. Outputs: distribution of factor weights across respondents (range, IQR, box plot), distribution of target product value index and implied price per respondent, identification of outlier respondents whose individual model diverges materially from the consensus, side-by-side weight comparison table. Helps validate whether the aggregated consensus is stable or driven by one or two dominant voices. |
+| 🟢 | ✓ Respondent-level model analysis (Advanced Diagnostics Tool 4) | DONE — per-respondent priority vectors + individual solver runs (all parallel via Promise.all); factor weight distribution table with consensus row; outlier detection at ±2 SD from mean target price (highlighted in amber); stability footer summarizing spread and flagging outliers. |
 | 🟢 | ✓ AI diagnostic explanations | DONE — after solver run, fires background AI call with R², NRMSE, factor weights, sensitivity signals, outliers, and target recommendations; plain-language interpretation displayed in "Model Interpretation" section beneath diagnostics. Uses `explain_diagnostics` task in `/api/ai/route.ts`. |
+| 🟢 | ✓ autoRunSolver DB write-back | DONE — `autoRunSolver` now persists results back to `regression_result` (B, M, SSE, R²) and `target_score` (normalized_score, point_estimate, ranges) after each run. Prevents Phase 6 showing $0 target values after Phase 2 delete-then-insert wipes solver-derived fields from `target_score`. |
 
 ---
 
@@ -135,13 +138,15 @@ Priority tiers:
 - Phase 2: Auto-assignment of reference products to levels
 - Phase 2: Brand factor — levels derived from benchmark names
 
+**Built:**
+- Phase 5: AI diagnostic explanations — plain-language interpretation of R², NRMSE, factor weights, sensitivity signals, outliers, target recommendations. Fires in background after solver run; displayed in "Model Interpretation" section.
+
 **Not yet built:**
 
 | Pri | Item | Notes |
 |-----|------|-------|
 | 🟡 | Phase 4: Coherence guidance | Explain score + suggest which comparisons to review. |
 | 🟡 | Phase 6: Narrative summary | Draft positioning narrative for export. |
-| 🟢 | Phase 5: Diagnostic explanations | Plain-language interpretation of model diagnostics. |
 
 ---
 
@@ -175,7 +180,8 @@ Priority tiers:
 | Stage | Gate | Key remaining work |
 |-------|------|--------------------|
 | **Staging** | ✓ DONE | Solver on Railway (`https://vpm-app-production.up.railway.app`), Next.js on Vercel (`https://vpm-app.vercel.app`), `SOLVER_URL` env var set, Supabase redirect URLs configured, forgot-password + PKCE auth callback working |
-| **Prospect-ready** | Before any external demo | Demo/sample project, contextual tooltips, PDF Factor Contributions lollipop rebuild |
+| **Prospect-ready** | Before any external demo | ~~Contextual tooltips~~ ✓ — remaining: demo/sample project, PDF Factor Contributions lollipop rebuild |
+| | | *Also resolved this session:* ~~Duplicate respondent prevention~~ ✓, ~~Survey completion timing~~ ✓, ~~Respondent-level analysis (Tool 4)~~ ✓, ~~autoRunSolver write-back (Phase 6 $0 fix)~~ ✓ |
 | **Commercial launch** | Before taking payment | Stripe billing, product tier enforcement, settings/profile, onboarding tour, survey invite emails |
 
 ---

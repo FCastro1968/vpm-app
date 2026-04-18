@@ -66,8 +66,8 @@ Priority tiers:
 |-----|------|-------|
 | 🟡 | AI coherence guidance | Plain-language explanation of Coherence Score + suggest which comparisons to review. |
 | 🟡 | Survey reminder email | Send a nudge to distributed respondents who haven't submitted. Triggered manually by facilitator or auto-triggered N days before deadline. Requires email infrastructure (see invite email options below). |
-| 🟡 | Survey invite email — Option A (mailto prefill) | Replace "Copy link" with "Send invite" button using `mailto:` — opens facilitator's email client with recipient, subject, and body pre-populated. Zero new infrastructure. |
-| 🟡 | Survey invite email — Option B (transactional, e.g. Resend) | Server-side API route sends invite directly from app. Requires Resend account + API key + verified sending domain. Better respondent UX. Supersedes Option A if implemented. |
+| 🟡 | Survey invite email — Option A (mailto prefill) | Superseded by Option B. |
+| 🟡 | ✓ Survey invite email — Option B (transactional, Resend) | DONE — `app/api/send-survey-invite/route.ts` sends branded HTML email via Resend SDK. Phase 4 "+ Add & Invite" auto-sends on add; per-row "Send invite" / "Resend" with inline sent/error feedback. Uses `RESEND_API_KEY` + `RESEND_FROM_EMAIL` env vars (currently using `onboarding@resend.dev` test sender until domain finalized). |
 
 ---
 
@@ -150,15 +150,27 @@ Priority tiers:
 
 ---
 
+## Marketing & Go-to-Market
+
+| Pri | Item | Notes |
+|-----|------|-------|
+| 🔴 | ✓ Marketing landing page | DONE — public `/` page (hero, problem section, 4 output sections with product screenshots, 6-phase methodology cards, AI Assist section, 3 persona cards, dark CTA). Authenticated users redirect to dashboard. `proxy.ts` updated to allow `/`, `/screenshots`, `/request-access`, `/api/request-access` without auth. `.gitattributes` marks PNG/JPG as binary to prevent CRLF corruption. |
+| 🔴 | ✓ Request Access form | DONE — `/request-access` client form captures name, email, company, role, projects/month, use case. Submits to `/api/request-access` which emails lead to `fcastro@zoominternet.net` via Resend. Confirmation screen on success. |
+| 🟡 | Domain & branding | `valuepricing.org` available at ~$8. Final domain decision pending — also considering single-word names (Quantra, Quantiv, etc.). Domain will also serve as verified sending domain for Resend transactional emails. |
+| 🟡 | Survey reminder email | Nudge to distributed respondents who haven't submitted. Triggered manually or auto-triggered N days before deadline. Infrastructure (Resend) now in place. |
+| 🟢 | Demo / sample project | Pre-loaded read-only project for prospects (e.g., CO2 incubator). Lets a prospect experience full output before building anything. |
+
+---
+
 ## User Profile & Account Settings
 
 | Pri | Item | Notes |
 |-----|------|-------|
-| 🟡 | Settings page — shell | `/settings` route with sidebar nav: Profile, Plan & Billing, Team, Notifications. Accessible from dashboard header/avatar menu. |
-| 🟡 | Profile tab | Display name, email (read-only, managed by Supabase auth), password change, avatar/initials. |
-| 🟡 | Plan & Billing tab | Current plan badge (Starter / Professional / Enterprise), usage counters (projects used / seat limit), upgrade CTA. Billing portal link (Stripe customer portal) when on paid plan. |
-| 🟡 | Team tab | Invite team members by email, assign seat, remove member. Visible on Professional+ only. Shows pending invites. |
-| 🟢 | Notifications tab | Email preferences: survey submitted, model ready, export complete. Toggle per event type. |
+| 🟡 | ✓ Settings page — shell | DONE — `/settings` with sidebar nav (Profile, Plan & Billing, Team, Notifications); `SettingsNav` client component with active-tab highlight; accessible from dashboard header initials avatar dropdown. |
+| 🟡 | ✓ Profile tab | DONE — display name (Supabase `user_metadata.full_name`), read-only email, password change, initials avatar preview. |
+| 🟡 | ✓ Plan & Billing tab | DONE — managed-access model (no self-serve tiers): Active badge, project count, full capabilities checklist, support email `support@valuepricing.org`. |
+| 🟡 | Team tab | Stubbed — "coming soon" placeholder. Full team management deferred until commercial launch. |
+| 🟢 | Notifications tab | Stubbed — "coming soon" placeholder. Email preference toggles deferred. |
 | 🟢 | API key management | Generate / revoke personal API tokens. Enterprise only. Feeds future API access feature. |
 
 ---
@@ -182,7 +194,7 @@ Priority tiers:
 | **Staging** | ✓ DONE | Solver on Railway (`https://vpm-app-production.up.railway.app`), Next.js on Vercel (`https://vpm-app.vercel.app`), `SOLVER_URL` env var set, Supabase redirect URLs configured, forgot-password + PKCE auth callback working |
 | **Prospect-ready** | Before any external demo | ~~Contextual tooltips~~ ✓ — remaining: demo/sample project, PDF Factor Contributions lollipop rebuild |
 | | | *Also resolved this session:* ~~Duplicate respondent prevention~~ ✓, ~~Survey completion timing~~ ✓, ~~Respondent-level analysis (Tool 4)~~ ✓, ~~autoRunSolver write-back (Phase 6 $0 fix)~~ ✓ |
-| **Commercial launch** | Before taking payment | Stripe billing, product tier enforcement, settings/profile, onboarding tour, survey invite emails |
+| **Commercial launch** | Before taking payment | Stripe billing, product tier enforcement, onboarding tour — ~~settings/profile~~ ✓, ~~survey invite emails~~ ✓, ~~marketing landing page~~ ✓ |
 
 ---
 

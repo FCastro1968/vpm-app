@@ -232,17 +232,17 @@ export default async function HomePage() {
             {[
               {
                 role: 'Independent Consultants',
-                description: 'Deliver institutional-quality pricing analysis to clients without a full research team. Increase margin on every engagement. Complete multiple projects per month with a single license.',
-                detail: 'Replace a $25K–$50K consulting engagement with a tool that costs a fraction of one billable day.',
+                description: 'Deliver the same rigor as a full consulting team — without one. VPM handles the analytical heavy lifting so you can focus on client relationships and interpretation. Run multiple engagements per month with a single license.',
+                detail: 'More engagements. Higher margins. Fully defensible outputs.',
               },
               {
                 role: 'Pricing & Strategy Teams',
-                description: 'Standardize how your organization approaches pricing decisions. Build a repeatable, auditable process across every product launch and repositioning initiative.',
-                detail: 'Stop starting from scratch. Every project builds on the same framework.',
+                description: 'Stop paying $25K–$100K per engagement to outside firms for work your team can now own. Build a repeatable, auditable pricing process across every product launch, repositioning, and portfolio review.',
+                detail: 'Bring the methodology in-house. Keep the rigor.',
               },
               {
                 role: 'Consultancies & Agencies',
-                description: 'Scale pricing work across multiple client engagements simultaneously. Consistent methodology, faster delivery, defensible outputs your clients can take to their board.',
+                description: 'Scale pricing work across multiple client engagements simultaneously. Consistent methodology, faster delivery, defensible outputs your clients can present to their board — under your name.',
                 detail: 'Your methodology, systematized.',
               },
             ].map(({ role, description, detail }) => (

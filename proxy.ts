@@ -35,6 +35,7 @@ export async function proxy(request: NextRequest) {
     !pathname.startsWith('/auth') &&
     !pathname.startsWith('/survey') &&
     !pathname.startsWith('/request-access') &&
+    !pathname.startsWith('/screenshots') &&
     !pathname.startsWith('/api/survey') &&
     !pathname.startsWith('/api/request-access')
   ) {

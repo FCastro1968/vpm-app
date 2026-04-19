@@ -578,7 +578,14 @@ function FactorContributionsPage({ data }: { data: PDFReportData }) {
                   if (!groups.has(rx)) groups.set(rx, [])
                   groups.get(rx)!.push(pi)
                 })
-                return Array.from(groups.entries()).map(([cx, pis], gi) => {
+                // Sort: refs-only first, then by count asc, then target groups last — so most important renders on top
+                const sorted_groups = Array.from(groups.entries()).sort(([, a], [, b]) => {
+                  const aHasTarget = a.some(pi => allProducts[pi].isTarget)
+                  const bHasTarget = b.some(pi => allProducts[pi].isTarget)
+                  if (aHasTarget !== bHasTarget) return aHasTarget ? 1 : -1
+                  return a.length - b.length
+                })
+                return sorted_groups.map(([cx, pis], gi) => {
                   const r = 4.5
                   if (pis.length === 1) {
                     const p = allProducts[pis[0]]
@@ -647,7 +654,13 @@ function FactorContributionsPage({ data }: { data: PDFReportData }) {
                   if (!groups.has(rx)) groups.set(rx, [])
                   groups.get(rx)!.push(pi)
                 })
-                return Array.from(groups.entries()).map(([cx, pis], gi) => {
+                const sorted_groups = Array.from(groups.entries()).sort(([, a], [, b]) => {
+                  const aHasTarget = a.some(pi => allProducts[pi].isTarget)
+                  const bHasTarget = b.some(pi => allProducts[pi].isTarget)
+                  if (aHasTarget !== bHasTarget) return aHasTarget ? 1 : -1
+                  return a.length - b.length
+                })
+                return sorted_groups.map(([cx, pis], gi) => {
                   const r = 5.5
                   if (pis.length === 1) {
                     const p = allProducts[pis[0]]

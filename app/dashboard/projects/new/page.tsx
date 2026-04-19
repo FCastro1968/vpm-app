@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 interface Folder { id: string; name: string; parent_id: string | null }
 
-export default function NewProjectPage() {
+function NewProjectForm() {
   const [name,       setName]       = useState('')
   const [folderId,   setFolderId]   = useState<string>('')
   const [folders,    setFolders]    = useState<Folder[]>([])
@@ -80,7 +80,6 @@ export default function NewProjectPage() {
     router.push(`/dashboard/projects/${project.id}/phase-1`)
   }
 
-  // Build display list: top-level first, then indented children
   const topLevel   = folders.filter(f => !f.parent_id)
   const childrenOf = (pid: string) => folders.filter(f => f.parent_id === pid)
 
@@ -104,7 +103,9 @@ export default function NewProjectPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Folder <span className="text-gray-400 font-normal">(optional)</span></label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Folder <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
             <select
               value={folderId}
               onChange={e => setFolderId(e.target.value)}
@@ -146,5 +147,13 @@ export default function NewProjectPage() {
         </form>
       </div>
     </div>
+  )
+}
+
+export default function NewProjectPage() {
+  return (
+    <Suspense>
+      <NewProjectForm />
+    </Suspense>
   )
 }

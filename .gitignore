@@ -4,3 +4,5 @@ node_modules/
 .next/ 
 __pycache__/ 
 "*.pyc" 
+VPM_AI_Assist.txt
+tsconfig.tsbuildinfo

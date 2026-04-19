@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 
 interface Member {
   id: string
@@ -44,7 +43,6 @@ export default function TeamClient({
   const [sending, setSending]       = useState(false)
   const [inviteError, setInviteErr] = useState('')
   const [inviteSent, setInviteSent] = useState('')
-  const supabase = createClient()
 
   const canManage = currentRole === 'owner' || currentRole === 'admin'
 
@@ -58,43 +56,28 @@ export default function TeamClient({
     setInviteErr('')
     setInviteSent('')
 
-    // Check for duplicate
-    const existing = members.find(m => m.invited_email?.toLowerCase() === inviteEmail.trim().toLowerCase())
-    if (existing) {
-      setInviteErr('This email is already a member or has a pending invite.')
+    const res = await fetch('/api/org/invite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole, orgId }),
+    })
+    const json = await res.json()
+
+    if (!res.ok) {
+      setInviteErr(json.error ?? 'Something went wrong')
       setSending(false)
       return
     }
 
-    const { data, error } = await supabase
-      .from('org_member')
-      .insert({
-        org_id: orgId,
-        user_id: null,
-        role: inviteRole,
-        invited_email: inviteEmail.trim().toLowerCase(),
-      })
-      .select('id, user_id, role, invited_email, joined_at, created_at')
-      .single()
+    setMembers(prev => [...prev, json.member as Member])
 
-    if (error) {
-      setInviteErr(error.message)
-      setSending(false)
-      return
-    }
-
-    setMembers(prev => [...prev, data as Member])
-
-    // Send invite email
     try {
       await fetch('/api/send-team-invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: inviteEmail.trim() }),
       })
-    } catch {
-      // Non-fatal — invite row exists, email just didn't send
-    }
+    } catch { /* non-fatal */ }
 
     setInviteSent(inviteEmail.trim())
     setInvite('')
@@ -102,14 +85,22 @@ export default function TeamClient({
   }
 
   async function removeMember(member: Member) {
-    if (member.user_id === currentUserId) return // can't remove yourself
-    const { error } = await supabase.from('org_member').delete().eq('id', member.id)
-    if (!error) setMembers(prev => prev.filter(m => m.id !== member.id))
+    if (member.user_id === currentUserId) return
+    const res = await fetch('/api/org/invite', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ memberId: member.id, orgId }),
+    })
+    if (res.ok) setMembers(prev => prev.filter(m => m.id !== member.id))
   }
 
   async function changeRole(member: Member, role: string) {
-    const { error } = await supabase.from('org_member').update({ role }).eq('id', member.id)
-    if (!error) setMembers(prev => prev.map(m => m.id === member.id ? { ...m, role } : m))
+    const res = await fetch('/api/org/invite', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ memberId: member.id, orgId, role }),
+    })
+    if (res.ok) setMembers(prev => prev.map(m => m.id === member.id ? { ...m, role } : m))
   }
 
   return (

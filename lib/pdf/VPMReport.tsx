@@ -467,7 +467,7 @@ function FactorContributionsPage({ data }: { data: PDFReportData }) {
   const LABEL_W = 152   // factor name
   const PILL_W  = 46    // importance score badge
   const BAR_X   = LABEL_W + PILL_W + 6   // where bars start
-  const BAR_W   = W - BAR_X - 6          // bar area width
+  const BAR_W   = W - BAR_X - 24         // bar area width (right margin for tick label overflow)
   const ROW_H   = 22
   const HEADER_H = 24   // taller to fit scale tick labels
   const TOTAL_H  = 28   // total row taller

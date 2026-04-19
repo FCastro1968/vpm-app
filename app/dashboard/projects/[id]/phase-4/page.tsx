@@ -257,9 +257,18 @@ export default function Phase4Page() {
           .eq('project_id', projectId)
 
         if (aggData && aggData.length > 0 && factorsWithLevels.length > 0) {
+          // Deduplicate by (comparison_type, attribute_id) — NULL attribute_id
+          // breaks upsert uniqueness so stale duplicate rows may exist in DB.
+          const seen = new Set<string>()
+          const dedupedAgg = aggData.filter(row => {
+            const key = `${row.comparison_type}__${row.attribute_id ?? 'null'}`
+            if (seen.has(key)) return false
+            seen.add(key)
+            return true
+          })
           // Reconstruct display results from saved data
           const displayResults: AggregatedResult[] = []
-          for (const row of aggData) {
+          for (const row of dedupedAgg) {
             let label = 'Factor Importance'
             if (row.comparison_type === 'LEVEL' && row.attribute_id) {
               const f = factorsWithLevels.find(f => f.id === row.attribute_id)

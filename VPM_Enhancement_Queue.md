@@ -26,7 +26,7 @@ Priority tiers:
 | 🟡 | ✓ Validation gates | DONE — hard block Save & Continue when fewer than 3 reference products are included. (Currency is project-level so mixed currency can't occur; segment note dropped as too vague.) |
 | 🟡 | ✓ Market share metadata | DONE — surface market_share_source, market_share_confidence, and market_share_ai_assisted in UI. |
 | 🟡 | CSV benchmark import | Paste or upload a spreadsheet with product name, price, and optional market share. Maps columns interactively. Eliminates manual entry friction for large competitive sets. |
-| 🟡 | Benchmark price bulk-edit table | Edit all benchmark prices in a single inline table without opening each row individually. Needed for price refresh cycles. |
+| 🟡 | ~~Benchmark price bulk-edit table~~ | Removed — Phase 1 already shows all benchmarks inline; no separate bulk-edit needed. |
 | 🟢 | ✓ Target Segment field | DONE — optional "Target Segment" field added alongside Geographic Scope. Stored in project.target_segment, surfaced in PDF cover page. |
 
 ---
@@ -119,7 +119,7 @@ Priority tiers:
 | Pri | Item | Notes |
 |-----|------|-------|
 | 🟡 | ✓ Project clone | DONE — selective carry-over dialog. Copies factors, levels, assignments, benchmarks+prices, respondents. Survey responses and solver results not cloned. |
-| 🟡 | Project folders / organization | Flat folder structure on dashboard. Per-user or per-org. "Unfiled" as first-class view. Alternative: lightweight tags/labels with filter row (20% effort, 80% of value). |
+| 🟡 | ✓ Project folders / organization | DONE — 2-level hierarchy (client → engagement); folder CRUD with rename/delete; project move dropdown; pre-assign folder on create; always-show actions in folder views. |
 | 🟡 | Project archiving | Archive completed projects to a separate view. Archived projects excluded from active counts and default dashboard view. Restoreable. |
 | 🟡 | Project templates | Save a complete project configuration (framework + benchmarks + scope, no survey responses or solver results) as a named template. Useful for repeat engagements in the same category. |
 | 🟡 | Comments / annotations | Inline comments on model outputs (Value Map, Factor Contributions, Positioning Table). Threaded, per-user, resolvable. Supports team review before client delivery. |
@@ -169,7 +169,7 @@ Priority tiers:
 | 🟡 | ✓ Settings page — shell | DONE — `/settings` with sidebar nav (Profile, Plan & Billing, Team, Notifications); `SettingsNav` client component with active-tab highlight; accessible from dashboard header initials avatar dropdown. |
 | 🟡 | ✓ Profile tab | DONE — display name (Supabase `user_metadata.full_name`), read-only email, password change, initials avatar preview. |
 | 🟡 | ✓ Plan & Billing tab | DONE — managed-access model (no self-serve tiers): Active badge, project count, full capabilities checklist, support email `support@valuepricing.org`. |
-| 🟡 | Team tab | Stubbed — "coming soon" placeholder. Full team management deferred until commercial launch. |
+| 🟡 | ✓ Team tab | DONE — member list with roles, pending invites, invite by email (service role API route), role change, remove member. Invite email via Resend (pending verified domain). Auto-accept pending invites on login via email match. |
 | 🟢 | Notifications tab | Stubbed — "coming soon" placeholder. Email preference toggles deferred. |
 | 🟢 | API key management | Generate / revoke personal API tokens. Enterprise only. Feeds future API access feature. |
 
@@ -194,7 +194,7 @@ Priority tiers:
 | **Staging** | ✓ DONE | Solver on Railway (`https://vpm-app-production.up.railway.app`), Next.js on Vercel (`https://vpm-app.vercel.app`), `SOLVER_URL` env var set, Supabase redirect URLs configured, forgot-password + PKCE auth callback working |
 | **Prospect-ready** | Before any external demo | ~~Contextual tooltips~~ ✓ — remaining: demo/sample project, PDF Factor Contributions lollipop rebuild |
 | | | *Also resolved this session:* ~~Duplicate respondent prevention~~ ✓, ~~Survey completion timing~~ ✓, ~~Respondent-level analysis (Tool 4)~~ ✓, ~~autoRunSolver write-back (Phase 6 $0 fix)~~ ✓ |
-| **Commercial launch** | Before taking payment | Stripe billing, product tier enforcement, onboarding tour — ~~settings/profile~~ ✓, ~~survey invite emails~~ ✓, ~~marketing landing page~~ ✓ |
+| **Commercial launch** | Before taking payment | Stripe billing, product tier enforcement, onboarding tour — ~~settings/profile~~ ✓, ~~survey invite emails~~ ✓, ~~marketing landing page~~ ✓, ~~workspace folders~~ ✓, ~~team management~~ ✓ |
 
 ---
 

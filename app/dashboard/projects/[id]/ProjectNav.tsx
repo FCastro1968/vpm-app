@@ -10,6 +10,7 @@ const PHASES = [
   { number: 4, label: 'Coherence Review' },
   { number: 5, label: 'Value Pricing Model' },
   { number: 6, label: 'Analysis & Output' },
+  { number: 7, label: 'Sensitivity Analysis' },
 ]
 
 function phaseStatus(phaseNumber: number, projectStatus: string): 'complete' | 'active' | 'locked' {

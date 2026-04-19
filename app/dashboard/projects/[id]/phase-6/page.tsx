@@ -1536,10 +1536,10 @@ export default function Phase6Page() {
             ← Back to Value Pricing Model
           </button>
           <button
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push(`/dashboard/projects/${projectId}/phase-7`)}
             className="px-6 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
           >
-            Return to Dashboard
+            Sensitivity Analysis →
           </button>
         </div>
 

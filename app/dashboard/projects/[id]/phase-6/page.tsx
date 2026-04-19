@@ -495,6 +495,11 @@ export default function Phase6Page() {
   const [valueMode, setValueMode] = useState<'model' | 'diff'>('model')
   const [showLabels, setShowLabels] = useState(false)
   const lollipopCanvasRef = useRef<HTMLCanvasElement>(null)
+  const [categoryAnchor,     setCategoryAnchor]     = useState('')
+  const [aiNarrative,        setAiNarrative]        = useState('')
+  const [aiNarrativeLoading, setAiNarrativeLoading] = useState(false)
+  const [aiNarrativeError,   setAiNarrativeError]   = useState('')
+  const [narrativeCopied,    setNarrativeCopied]    = useState(false)
 
   // ── Load ──────────────────────────────────────────────────────────────────
 
@@ -503,7 +508,7 @@ export default function Phase6Page() {
       // Load price basis label from project
       const { data: projectData } = await supabase
         .from('project')
-        .select('benchmark_price_basis, benchmark_price_basis_custom_description')
+        .select('benchmark_price_basis, benchmark_price_basis_custom_description, category_anchor')
         .eq('id', projectId)
         .single()
       if (projectData) {
@@ -515,6 +520,7 @@ export default function Phase6Page() {
           basis === 'CUSTOM' && customDesc ? customDesc :
           'Market Price'
         )
+        setCategoryAnchor(projectData.category_anchor ?? '')
       }
 
       // Regression result
@@ -669,6 +675,55 @@ export default function Phase6Page() {
     }
     load()
   }, [projectId])
+
+  // ── AI Narrative ──────────────────────────────────────────────────────────
+
+  async function runNarrative() {
+    setAiNarrativeLoading(true)
+    setAiNarrativeError('')
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          task: 'generate_narrative',
+          payload: {
+            category_anchor: categoryAnchor,
+            price_basis_label: priceBasisLabel,
+            targets: targets.filter(t => t.point_estimate > 0).map(t => ({
+              name: t.name,
+              point_estimate: t.point_estimate,
+              value_index: t.value_index,
+              use_case_type: t.use_case_type,
+            })),
+            top_factors: factors
+              .map(f => ({ name: f.name, weight_pct: f.weight * 100 }))
+              .sort((a, b) => b.weight_pct - a.weight_pct)
+              .slice(0, 5),
+            benchmarks: benchmarks.filter(b => b.included_in_regression).map(b => ({
+              name: b.name,
+              market_price: b.market_price,
+              value_index: b.value_index,
+            })),
+            r_squared: modelParams?.r_squared ?? 0,
+          },
+        }),
+      })
+      if (!res.ok) throw new Error(`AI request failed: ${res.status}`)
+      const data = await res.json()
+      setAiNarrative(data.narrative ?? '')
+    } catch (err: any) {
+      setAiNarrativeError(err.message ?? 'AI request failed')
+    } finally {
+      setAiNarrativeLoading(false)
+    }
+  }
+
+  async function copyNarrative() {
+    await navigator.clipboard.writeText(aiNarrative)
+    setNarrativeCopied(true)
+    setTimeout(() => setNarrativeCopied(false), 2000)
+  }
 
   // ── Measure Recharts plot area after chart renders ────────────────────────
 
@@ -905,6 +960,65 @@ export default function Phase6Page() {
       </div>
 
       <div className="space-y-8">
+
+        {/* ── AI Positioning Narrative ───────────────────────────────────── */}
+        <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-base font-semibold text-gray-900">Positioning Narrative</h2>
+              <p className="text-xs text-gray-500 mt-0.5">AI-drafted executive summary of the model results. Review and edit before sharing.</p>
+            </div>
+            {!aiNarrative && (
+              <button
+                onClick={runNarrative}
+                disabled={aiNarrativeLoading}
+                className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 disabled:opacity-50 flex-shrink-0"
+              >
+                {aiNarrativeLoading ? (
+                  <>
+                    <span className="inline-block w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                    Generating…
+                  </>
+                ) : '✦ Generate Narrative'}
+              </button>
+            )}
+          </div>
+
+          {aiNarrativeError && (
+            <p className="text-xs text-red-600 mt-1">{aiNarrativeError}</p>
+          )}
+
+          {!aiNarrative && !aiNarrativeLoading && (
+            <p className="text-sm text-gray-400 italic">Click "Generate Narrative" to produce a plain-language positioning summary of the model results.</p>
+          )}
+
+          {aiNarrativeLoading && (
+            <div className="flex items-center gap-2 text-sm text-gray-400">
+              <span className="inline-block w-4 h-4 border-2 border-gray-300 border-t-blue-400 rounded-full animate-spin" />
+              Drafting narrative…
+            </div>
+          )}
+
+          {aiNarrative && (
+            <div>
+              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{aiNarrative}</p>
+              <div className="flex items-center gap-3 mt-3 pt-3 border-t border-gray-100">
+                <button
+                  onClick={copyNarrative}
+                  className="text-xs text-gray-500 hover:text-gray-700"
+                >
+                  {narrativeCopied ? '✓ Copied' : 'Copy to clipboard'}
+                </button>
+                <button
+                  onClick={() => { setAiNarrative(''); setAiNarrativeError('') }}
+                  className="text-xs text-blue-500 hover:text-blue-700"
+                >
+                  ✦ Regenerate
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
 
         {/* ── Value Map ─────────────────────────────────────────────────── */}
         <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">

@@ -156,6 +156,10 @@ export default function Phase4Page() {
   const [inviteStatus,      setInviteStatus]       = useState<Record<string, 'sent' | 'error'>>({})
   const [staleWarningOpen,  setStaleWarningOpen]   = useState(false)
   const [pendingToggle,     setPendingToggle]      = useState<{ respondentId: string; included: boolean } | null>(null)
+  const [categoryAnchor,    setCategoryAnchor]     = useState('')
+  const [aiSummary,         setAiSummary]          = useState('')
+  const [aiSummaryLoading,  setAiSummaryLoading]   = useState(false)
+  const [aiSummaryError,    setAiSummaryError]     = useState('')
 
   // ── Load ──────────────────────────────────────────────────────────────────
 
@@ -167,13 +171,14 @@ export default function Phase4Page() {
       // Load project status, name + survey deadline
       const { data: project } = await supabase
         .from('project')
-        .select('status, survey_expires_at, name')
+        .select('status, survey_expires_at, name, category_anchor')
         .eq('id', projectId)
         .single()
 
       const status = project?.status ?? ''
       setProjectStatus(status)
       setProjectName(project?.name ?? '')
+      setCategoryAnchor(project?.category_anchor ?? '')
       if (project?.survey_expires_at) {
         // Convert to YYYY-MM-DD for the date input
         setSurveyExpiresAt(project.survey_expires_at.slice(0, 10))
@@ -488,6 +493,33 @@ export default function Phase4Page() {
     setAnalysisRan(false)
     setAggregatedResults([])
     setRespondentCRs([])
+  }
+
+  async function runAiSummary() {
+    setAiSummaryLoading(true)
+    setAiSummaryError('')
+    try {
+      const includedCount = respondents.filter(r => r.included && (r.mode !== 'DISTRIBUTED' || !!r.submitted_at)).length
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          task: 'explain_coherence',
+          payload: {
+            category_anchor: categoryAnchor,
+            n_respondents: includedCount,
+            results: aggregatedResults.map(r => ({ label: r.label, cr: r.cr, cr_flag: r.cr_flag })),
+          },
+        }),
+      })
+      if (!res.ok) throw new Error(`AI request failed: ${res.status}`)
+      const data = await res.json()
+      setAiSummary(data.summary ?? '')
+    } catch (err: any) {
+      setAiSummaryError(err.message ?? 'AI request failed')
+    } finally {
+      setAiSummaryLoading(false)
+    }
   }
 
   async function handleStaleConfirm() {
@@ -1021,6 +1053,43 @@ export default function Phase4Page() {
                   </span>
                 </div>
               ))}
+            </div>
+
+            {/* ── AI Coherence Summary ─────────────────────────────── */}
+            <div className="mt-4">
+              {!aiSummary && (
+                <button
+                  onClick={runAiSummary}
+                  disabled={aiSummaryLoading}
+                  className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 disabled:opacity-50"
+                >
+                  {aiSummaryLoading ? (
+                    <>
+                      <span className="inline-block w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                      Generating summary…
+                    </>
+                  ) : '✦ AI Coherence Summary'}
+                </button>
+              )}
+              {aiSummaryError && (
+                <p className="mt-2 text-xs text-red-600">{aiSummaryError}</p>
+              )}
+              {aiSummary && (
+                <div className="mt-2 rounded-md border border-blue-100 bg-blue-50 px-4 py-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-blue-700 flex items-center gap-1.5">
+                      <span>✦</span> AI Coherence Summary
+                    </span>
+                    <button
+                      onClick={() => { setAiSummary(''); setAiSummaryError('') }}
+                      className="text-xs text-blue-400 hover:text-blue-600"
+                    >
+                      Regenerate
+                    </button>
+                  </div>
+                  <p className="text-sm text-gray-700 leading-relaxed">{aiSummary}</p>
+                </div>
+              )}
             </div>
           </section>
         )}

@@ -39,6 +39,12 @@ export async function POST(request: NextRequest) {
       case 'explain_diagnostics':
         return NextResponse.json(await explainDiagnostics(payload))
 
+      case 'explain_coherence':
+        return NextResponse.json(await explainCoherence(payload))
+
+      case 'generate_narrative':
+        return NextResponse.json(await generateNarrative(payload))
+
       default:
         return NextResponse.json({ error: `Unknown task: ${task}` }, { status: 400 })
     }
@@ -432,4 +438,107 @@ Write a concise 3–5 sentence plain-language interpretation of these results fo
   const textContent = response.content.find((c: any) => c.type === 'text')
   if (!textContent || textContent.type !== 'text') throw new Error('No text response')
   return { interpretation: textContent.text.trim() }
+}
+
+// ─── Task: explain_coherence ─────────────────────────────────────────────────
+
+async function explainCoherence(payload: {
+  category_anchor: string
+  n_respondents: number
+  results: { label: string; cr: number; cr_flag: 'OK' | 'MARGINAL' | 'INCONSISTENT' }[]
+}) {
+  const { category_anchor, n_respondents, results } = payload
+
+  const crLines = results.map(r => {
+    const flag = r.cr_flag === 'OK' ? 'acceptable' : r.cr_flag === 'MARGINAL' ? 'marginal' : 'inconsistent'
+    return `  - ${r.label}: ${(r.cr * 100).toFixed(1)}% (${flag})`
+  }).join('\n')
+
+  const inconsistent = results.filter(r => r.cr_flag === 'INCONSISTENT')
+  const marginal = results.filter(r => r.cr_flag === 'MARGINAL')
+
+  const prompt = `You are reviewing the internal consistency of a preference survey for a value-based pricing model on: "${category_anchor}".
+
+Survey data: ${n_respondents} respondent${n_respondents !== 1 ? 's' : ''} included in this analysis.
+
+Coherence scores by comparison set (lower is more consistent; below 10% = acceptable, 10–20% = marginal, above 20% = inconsistent):
+${crLines}
+
+${inconsistent.length === 0 && marginal.length === 0
+  ? 'All comparison sets are within acceptable limits.'
+  : `Issues found: ${[
+      inconsistent.length > 0 ? `${inconsistent.length} inconsistent (${inconsistent.map(r => r.label).join(', ')})` : '',
+      marginal.length > 0 ? `${marginal.length} marginal (${marginal.map(r => r.label).join(', ')})` : '',
+    ].filter(Boolean).join('; ')}.`
+}
+
+Write a concise 3–4 sentence plain-language summary for the pricing team. Cover: (1) the overall consistency picture and what it says about survey quality; (2) which specific comparison sets, if any, should be reviewed and why; (3) what this means for confidence in the model results. Be specific about factor names and scores. Do not use the term "Coherence Score" — instead say "consistency" or "internal consistency". Do not explain what AHP is.`
+
+  const response = await anthropic.messages.create({
+    model: MODEL,
+    max_tokens: 384,
+    system: 'You are a pricing methodology expert writing a concise survey quality summary for a professional audience.',
+    messages: [{ role: 'user', content: prompt }],
+  })
+
+  const textContent = response.content.find((c: any) => c.type === 'text')
+  if (!textContent || textContent.type !== 'text') throw new Error('No text response')
+  return { summary: textContent.text.trim() }
+}
+
+// ─── Task: generate_narrative ────────────────────────────────────────────────
+
+async function generateNarrative(payload: {
+  category_anchor: string
+  price_basis_label: string
+  targets: { name: string; point_estimate: number; value_index: number; use_case_type: string }[]
+  top_factors: { name: string; weight_pct: number }[]
+  benchmarks: { name: string; market_price: number; value_index: number }[]
+  r_squared: number
+}) {
+  const { category_anchor, price_basis_label, targets, top_factors, benchmarks, r_squared } = payload
+
+  const targetLines = targets.map(t =>
+    `  - ${t.name}: Value Index ${(t.value_index * 100).toFixed(0)}/100, model-implied price $${Math.round(t.point_estimate).toLocaleString()} (${price_basis_label})`
+  ).join('\n')
+
+  const factorLines = top_factors.slice(0, 5).map(f =>
+    `  - ${f.name}: ${f.weight_pct.toFixed(1)}%`
+  ).join('\n')
+
+  const benchmarkLines = benchmarks.slice(0, 6).map(b =>
+    `  - ${b.name}: Value Index ${(b.value_index * 100).toFixed(0)}/100, market price $${Math.round(b.market_price).toLocaleString()}`
+  ).join('\n')
+
+  const fitNote = r_squared >= 0.85
+    ? 'The model fit is strong, indicating high confidence in the price recommendations.'
+    : r_squared >= 0.65
+    ? 'The model fit is moderate — recommendations are directionally reliable but should be validated against market feedback.'
+    : 'The model fit is limited — treat recommendations as indicative guidance and weight market judgment accordingly.'
+
+  const prompt = `You are writing a positioning narrative for a value-based pricing engagement on: "${category_anchor}".
+
+Target product${targets.length > 1 ? 's' : ''}:
+${targetLines}
+
+Top value drivers (factor importance weights):
+${factorLines}
+
+Competitive reference set:
+${benchmarkLines}
+
+Model fit note: ${fitNote}
+
+Write a 4–6 sentence positioning narrative suitable for an executive summary or client report. Cover: (1) where the target product sits on the value spectrum relative to competition; (2) the key factors driving its value position; (3) what the model-implied price reflects about its positioning; (4) any notable competitive dynamics or risks. Use specific product names and dollar figures. Write in a confident, professional tone as if briefing a senior executive. Do not mention methodology, regression, AHP, or any internal modeling terms.`
+
+  const response = await anthropic.messages.create({
+    model: MODEL,
+    max_tokens: 512,
+    system: 'You are a strategic pricing consultant writing executive-level positioning narratives.',
+    messages: [{ role: 'user', content: prompt }],
+  })
+
+  const textContent = response.content.find((c: any) => c.type === 'text')
+  if (!textContent || textContent.type !== 'text') throw new Error('No text response')
+  return { narrative: textContent.text.trim() }
 }

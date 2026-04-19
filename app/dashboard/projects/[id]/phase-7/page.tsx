@@ -269,6 +269,9 @@ export default function Phase7Page() {
   const [factorRunning,  setFactorRunning]  = useState(false)
   const [factorError,    setFactorError]    = useState('')
 
+  // ── PDF export ─────────────────────────────────────────────────────────────
+  const [pdfLoading,     setPdfLoading]     = useState(false)
+
   // ── Market-implied ─────────────────────────────────────────────────────────
   const [impliedResult,  setImpliedResult]  = useState<{
     implied_weights: Record<string, number>
@@ -1168,12 +1171,78 @@ export default function Phase7Page() {
           >
             ← Back to Analysis & Output
           </button>
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50"
-          >
-            Return to Dashboard
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={async () => {
+                setPdfLoading(true)
+                try {
+                  // Map pre-computed state to PDF types
+                  const benchSensitivity = benchSensRows?.map(r => ({
+                    benchId:    r.benchId,
+                    benchName:  r.benchName,
+                    rangePct:   r.rangePct,
+                    basePrice:  r.basePrice,
+                    lowPrices:  r.lowPrices,
+                    highPrices: r.highPrices,
+                  }))
+                  const factorSensitivity = factorSens?.map(r => ({
+                    factorId:         r.excluded_attribute_id,
+                    factorName:       factors.find(f => f.id === r.excluded_attribute_id)?.name ?? r.excluded_attribute_id,
+                    weight:           attributeWeights[r.excluded_attribute_id] ?? 0,
+                    pointEstimate:    r.point_estimate,
+                    deltaFromFull:    r.delta_from_full_model,
+                    rSquaredExcluded: r.r_squared_weighted,
+                    flagged:          r.flagged,
+                  }))
+                  const res = await fetch(`/api/pdf/${projectId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ benchSensitivity, factorSensitivity }),
+                  })
+                  if (!res.ok) {
+                    const err = await res.json().catch(() => ({ error: 'PDF generation failed' }))
+                    throw new Error(err.error)
+                  }
+                  const blob = await res.blob()
+                  const url  = URL.createObjectURL(blob)
+                  const a    = document.createElement('a')
+                  a.href     = url
+                  a.download = res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] ?? 'VPM_Report.pdf'
+                  a.click()
+                  URL.revokeObjectURL(url)
+                } catch (err: any) {
+                  alert(err.message ?? 'PDF generation failed')
+                } finally {
+                  setPdfLoading(false)
+                }
+              }}
+              disabled={pdfLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 disabled:opacity-50"
+            >
+              {pdfLoading ? (
+                <>
+                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
+                  Generating…
+                </>
+              ) : (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                  </svg>
+                  Export PDF
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50"
+            >
+              Return to Dashboard
+            </button>
+          </div>
         </div>
 
       </div>

@@ -33,6 +33,16 @@ export interface PDFTarget {
   factor_contributions: { factor_id: string; name: string; contribution: number }[]
 }
 
+export interface PDFFactorSensitivityRow {
+  factorId: string
+  factorName: string
+  weight: number
+  pointEstimate: number | null
+  deltaFromFull: number | null
+  rSquaredExcluded: number | null
+  flagged: boolean
+}
+
 export interface PDFSensitivityRow {
   benchId: string
   benchName: string
@@ -56,6 +66,7 @@ export interface PDFReportData {
   targets: PDFTarget[]
   benchmarkResiduals: number[]
   sensitivity?: PDFSensitivityRow[]
+  factorSensitivity?: PDFFactorSensitivityRow[]
 }
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
@@ -1032,6 +1043,109 @@ function SensitivityPage({ data }: { data: PDFReportData }) {
   )
 }
 
+// ─── Factor Removal Sensitivity page ─────────────────────────────────────────
+
+function FactorSensitivityPage({ data }: { data: PDFReportData }) {
+  const { factorSensitivity, modelParams } = data
+  if (!factorSensitivity?.length) return null
+
+  const fullR2  = modelParams.r_squared
+  const fmt     = (v: number) => '$' + Math.round(v).toLocaleString()
+
+  // Sort by |delta| descending
+  const rows = [...factorSensitivity].sort((a, b) =>
+    Math.abs(b.deltaFromFull ?? 0) - Math.abs(a.deltaFromFull ?? 0)
+  )
+
+  // Delta bar scale — max |delta| across rows
+  const maxDelta = Math.max(...rows.map(r => Math.abs(r.deltaFromFull ?? 0)), 1)
+
+  const BAR_MAX_W = 80
+
+  return (
+    <PageShell projectName={data.projectName} section="Factor Removal Sensitivity">
+      <Text style={s.sectionTitle}>Factor Removal Sensitivity</Text>
+      <Text style={s.sectionSubtitle}>
+        How the recommended price changes when each factor is removed and remaining weights are renormalized. Large price deltas indicate the model depends heavily on that factor.
+      </Text>
+      <Text style={{ fontSize: 8, color: GRAY, marginBottom: 10 }}>
+        Full model R² = {(fullR2 * 100).toFixed(1)}%
+      </Text>
+
+      {/* Table header */}
+      <View style={{ flexDirection: 'row', borderBottomWidth: 1.5, borderBottomColor: DARK, paddingBottom: 4, marginBottom: 2 }}>
+        <Text style={{ fontSize: 8, color: GRAY, fontFamily: 'Helvetica-Bold', flex: 2 }}>Factor</Text>
+        <Text style={{ fontSize: 8, color: GRAY, fontFamily: 'Helvetica-Bold', flex: 0.7, textAlign: 'center' }}>Weight</Text>
+        <Text style={{ fontSize: 8, color: GRAY, fontFamily: 'Helvetica-Bold', flex: 0.9, textAlign: 'right' }}>R² excl.</Text>
+        <Text style={{ fontSize: 8, color: GRAY, fontFamily: 'Helvetica-Bold', flex: 0.9, textAlign: 'right' }}>R² Δ</Text>
+        <Text style={{ fontSize: 8, color: GRAY, fontFamily: 'Helvetica-Bold', flex: 1.1, textAlign: 'right' }}>Price excl.</Text>
+        <Text style={{ fontSize: 8, color: GRAY, fontFamily: 'Helvetica-Bold', flex: 1.1, textAlign: 'right' }}>Price Δ</Text>
+        <Text style={{ fontSize: 8, color: GRAY, fontFamily: 'Helvetica-Bold', flex: 1.8, textAlign: 'center' }}>Δ bar</Text>
+      </View>
+
+      {rows.map((row, i) => {
+        const r2Excl  = row.rSquaredExcluded
+        const r2Delta = r2Excl != null ? r2Excl - fullR2 : null
+        const delta   = row.deltaFromFull ?? 0
+        const barW    = (Math.abs(delta) / maxDelta) * BAR_MAX_W
+        const barColor = delta > 0 ? '#2563eb' : '#dc2626'
+        const r2Color  = r2Delta == null ? GRAY : r2Delta > 0.02 ? '#b45309' : r2Delta < -0.05 ? '#2563eb' : DARK
+
+        return (
+          <View key={row.factorId} style={{
+            flexDirection: 'row', paddingVertical: 5, alignItems: 'center',
+            backgroundColor: i % 2 === 0 ? '#f9fafb' : '#ffffff',
+            borderBottomWidth: 1, borderBottomColor: '#f3f4f6',
+          }}>
+            <View style={{ flex: 2, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Text style={{ fontSize: 8, color: DARK }}>
+                {row.factorName.length > 26 ? row.factorName.slice(0, 25) + '…' : row.factorName}
+              </Text>
+              {row.flagged && <Text style={{ fontSize: 6.5, color: '#b45309', fontFamily: 'Helvetica-Bold' }}>⚑</Text>}
+            </View>
+            <Text style={{ fontSize: 8, color: GRAY, flex: 0.7, textAlign: 'center' }}>
+              {(row.weight * 100).toFixed(0)}%
+            </Text>
+            <Text style={{ fontSize: 8, color: DARK, flex: 0.9, textAlign: 'right' }}>
+              {r2Excl != null ? (r2Excl * 100).toFixed(1) + '%' : '—'}
+            </Text>
+            <Text style={{ fontSize: 8, color: r2Color, flex: 0.9, textAlign: 'right', fontFamily: 'Helvetica-Bold' }}>
+              {r2Delta != null ? (r2Delta > 0 ? '+' : '') + (r2Delta * 100).toFixed(1) + 'pp' : '—'}
+            </Text>
+            <Text style={{ fontSize: 8, color: DARK, flex: 1.1, textAlign: 'right' }}>
+              {row.pointEstimate != null ? fmt(row.pointEstimate) : '—'}
+            </Text>
+            <Text style={{ fontSize: 8, color: delta !== 0 ? barColor : GRAY, flex: 1.1, textAlign: 'right', fontFamily: 'Helvetica-Bold' }}>
+              {delta !== 0 ? (delta > 0 ? '+' : '') + fmt(delta) : '—'}
+            </Text>
+            {/* Delta bar — centered on midpoint, extends left (neg) or right (pos) */}
+            <View style={{ flex: 1.8, alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ width: BAR_MAX_W * 2, height: 8, position: 'relative', flexDirection: 'row', alignItems: 'center' }}>
+                {/* Center line */}
+                <View style={{ position: 'absolute', left: BAR_MAX_W - 0.5, top: 0, width: 1, height: 8, backgroundColor: '#d1d5db' }} />
+                {/* Bar */}
+                {barW > 0 && (
+                  <View style={{
+                    position: 'absolute',
+                    left: delta >= 0 ? BAR_MAX_W : BAR_MAX_W - barW,
+                    top: 1, width: barW, height: 6,
+                    backgroundColor: barColor,
+                    borderRadius: 1,
+                  }} />
+                )}
+              </View>
+            </View>
+          </View>
+        )
+      })}
+
+      <Text style={{ fontSize: 7, color: GRAY, marginTop: 10 }}>
+        ⚑ Flagged: price delta exceeds 5% of full model estimate. R² Δ: amber = improves when excluded (factor may not align with market); blue = drops significantly (load-bearing factor).
+      </Text>
+    </PageShell>
+  )
+}
+
 // ─── Root document ────────────────────────────────────────────────────────────
 
 export function VPMReport({ data }: { data: PDFReportData }) {
@@ -1047,6 +1161,7 @@ export function VPMReport({ data }: { data: PDFReportData }) {
       <FactorContributionsPage data={data} />
       <PositioningTablePage data={data} />
       {data.sensitivity?.length ? <SensitivityPage data={data} /> : null}
+      {data.factorSensitivity?.length ? <FactorSensitivityPage data={data} /> : null}
     </Document>
   )
 }

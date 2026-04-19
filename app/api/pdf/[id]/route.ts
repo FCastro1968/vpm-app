@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { renderToBuffer } from '@react-pdf/renderer'
 import React from 'react'
 import { createServiceClient } from '@/lib/supabase/service'
-import { VPMReport, PDFReportData, PDFFactor, PDFBenchmark, PDFTarget, PDFSensitivityRow } from '@/lib/pdf/VPMReport'
+import { VPMReport, PDFReportData, PDFFactor, PDFBenchmark, PDFTarget, PDFSensitivityRow, PDFFactorSensitivityRow } from '@/lib/pdf/VPMReport'
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id: projectId } = await params
+async function buildAndRenderPDF(
+  projectId: string,
+  precomputed?: {
+    benchSensitivity?: PDFSensitivityRow[]
+    factorSensitivity?: PDFFactorSensitivityRow[]
+  }
+): Promise<NextResponse> {
   const supabase  = createServiceClient()
 
   try {
@@ -174,8 +176,10 @@ export async function GET(
     }).filter(t => t.point_estimate > 0)
 
     // ── Benchmark price sensitivity (tornado) ────────────────────────────────
-    let sensitivity: PDFSensitivityRow[] | undefined
-    try {
+    let sensitivity: PDFSensitivityRow[] | undefined = precomputed?.benchSensitivity
+    let factorSensitivity: PDFFactorSensitivityRow[] | undefined = precomputed?.factorSensitivity
+
+    if (!sensitivity) try {
       const solverUrl = process.env.SOLVER_URL || 'http://localhost:8000'
       const RANGE_PCT = 10
 
@@ -267,6 +271,7 @@ export async function GET(
       targets,
       benchmarkResiduals,
       sensitivity,
+      factorSensitivity,
     }
 
     // ── Render PDF ────────────────────────────────────────────────────────────
@@ -287,4 +292,24 @@ export async function GET(
     console.error('PDF generation error:', err)
     return NextResponse.json({ error: err.message ?? 'PDF generation failed' }, { status: 500 })
   }
+}
+
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id: projectId } = await params
+  return buildAndRenderPDF(projectId)
+}
+
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id: projectId } = await params
+  const body = await req.json().catch(() => ({}))
+  return buildAndRenderPDF(projectId, {
+    benchSensitivity:  body.benchSensitivity,
+    factorSensitivity: body.factorSensitivity,
+  })
 }

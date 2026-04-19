@@ -363,6 +363,14 @@ export default function Phase7Page() {
         for (const b of benchData) ranges[b.id] = b.price_range_pct ?? 10
         setBenchRanges(ranges)
 
+        // Auto-advance to COMPLETE on first Phase 7 visit after full model run
+        const { data: proj } = await supabase
+          .from('project').select('status').eq('id', projectId).single()
+        if (proj?.status === 'MODEL_RUN') {
+          await supabase.from('project').update({ status: 'COMPLETE' }).eq('id', projectId)
+          router.refresh()
+        }
+
       } catch (e: any) {
         setLoadError(e.message ?? 'Failed to load data')
       }

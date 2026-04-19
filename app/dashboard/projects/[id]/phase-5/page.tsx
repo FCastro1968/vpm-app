@@ -175,6 +175,7 @@ export default function Phase5Page() {
       }
 
       setLoaded(true)
+      router.refresh()
     }
     load()
   }, [projectId])

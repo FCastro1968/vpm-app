@@ -537,7 +537,7 @@ export default function Phase4Page() {
     await supabase.from('project').update({ status: 'SURVEY_CLOSED' }).eq('id', projectId)
     setProjectStatus('SURVEY_CLOSED')
     router.refresh()
-    executeToggle(respondentId, included)
+    await executeToggle(respondentId, included)
   }
 
   // ── Distributed respondent helpers ───────────────────────────────────────

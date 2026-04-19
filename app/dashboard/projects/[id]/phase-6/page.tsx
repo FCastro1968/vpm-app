@@ -672,6 +672,11 @@ export default function Phase6Page() {
       setTargets(targetsWithContributions)
 
       setLoaded(true)
+
+      // Ensure the layout re-renders with the latest project status.
+      // router.refresh() from the previous page may race with router.push(),
+      // so we call it here from the destination to guarantee the nav is in sync.
+      router.refresh()
     }
     load()
   }, [projectId])

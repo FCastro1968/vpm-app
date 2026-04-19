@@ -34,6 +34,57 @@ RI_TABLE = {
     11: 1.51, 12: 1.48, 13: 1.56, 14: 1.57, 15: 1.59
 }
 
+SCALE_MAX = 9.0
+
+
+def _scale_correct_matrix(m: np.ndarray) -> np.ndarray:
+    """
+    Replace scale-capped entries (9.0) with transitively implied ratios before
+    computing CR, so that logically consistent judgments forced to the scale
+    boundary are not penalised.
+
+    For each capped upper-triangle entry m[i][j] == SCALE_MAX:
+      - Collect "clean" implied ratios  m[i][k] * m[k][j]  for all intermediate
+        nodes k where neither leg (i,k) nor (k,j) is itself capped.
+      - If clean paths exist: replacement = arithmetic mean of clean implied ratios.
+      - If no clean paths exist (all paths pass through another capped entry):
+        replacement = max over all paths — the least-compressed estimate available.
+      - Only substitute when replacement > SCALE_MAX (i.e. the cap was binding).
+    """
+    n = m.shape[0]
+    corrected = m.copy()
+
+    def is_capped(r: int, c: int) -> bool:
+        # Works for both upper and lower triangle entries
+        return max(m[r][c], m[c][r]) >= SCALE_MAX
+
+    for i in range(n):
+        for j in range(i + 1, n):
+            if not is_capped(i, j):
+                continue
+
+            clean, all_implied = [], []
+            for k in range(n):
+                if k == i or k == j:
+                    continue
+                implied = m[i][k] * m[k][j]
+                all_implied.append(implied)
+                if not is_capped(i, k) and not is_capped(k, j):
+                    clean.append(implied)
+
+            if clean:
+                replacement = sum(clean) / len(clean)
+            elif all_implied:
+                replacement = max(all_implied)
+            else:
+                continue
+
+            if replacement > SCALE_MAX:
+                corrected[i][j] = replacement
+                corrected[j][i] = 1.0 / replacement
+
+    return corrected
+
 
 def gmm_priority_vector(matrix):
     m = np.array(matrix, dtype=float)
@@ -47,7 +98,8 @@ def consistency_ratio(matrix):
     n = m.shape[0]
     if n <= 2:
         return 0.0
-    weights = gmm_priority_vector(matrix)
+    m = _scale_correct_matrix(m)
+    weights = gmm_priority_vector(m.tolist())
     weighted_sum = m @ weights
     lambda_max = float(np.mean(weighted_sum / weights))
     ci = (lambda_max - n) / (n - 1)

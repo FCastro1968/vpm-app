@@ -4,6 +4,10 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useParams } from 'next/navigation'
 import { HelpTip } from '@/app/components/HelpTip'
+import { StaleWarningModal } from '@/app/components/StaleWarningModal'
+
+const STATUS_ORDER = ['DRAFT','SCOPE_COMPLETE','FRAMEWORK_COMPLETE','SURVEY_OPEN','SURVEY_CLOSED','UTILITIES_DERIVED','MODEL_RUN','COMPLETE']
+function statusIndex(s: string) { return STATUS_ORDER.indexOf(s) }
 
 interface Level {
   id?: string
@@ -110,16 +114,23 @@ export default function Phase2Page() {
   const [suggestingAssignments, setSuggestingAssignments] = useState(false)
   const [aiError,               setAiError]               = useState('')
   const [unrecognizedProducts,  setUnrecognizedProducts]  = useState<string[]>([])
+  const [projectStatus,         setProjectStatus]         = useState('DRAFT')
+  const [staleModal,            setStaleModal]            = useState<'structural' | 'assignment' | null>(null)
+  const pendingSaveNavigate = useRef<boolean>(true)
+  // Snapshots for stale detection — populated after load
+  const loadedAssignSnap = useRef<Assignments>({})
+  const loadedTargetAssignSnap = useRef<Assignments>({})
 
   useEffect(() => {
     async function load() {
-      // Load category anchor from project
+      // Load project fields including status
       const { data: projectData } = await supabase
         .from('project')
-        .select('category_anchor')
+        .select('category_anchor, status')
         .eq('id', projectId)
         .single()
       if (projectData?.category_anchor) setCategoryAnchor(projectData.category_anchor)
+      if (projectData?.status) setProjectStatus(projectData.status)
 
       // Load benchmarks
       const { data: benchData } = await supabase
@@ -178,6 +189,7 @@ export default function Phase2Page() {
             newAssignments[fKey][a.benchmark_id] = (a.level as any).display_order
           }
           setAssignments(newAssignments)
+          loadedAssignSnap.current = JSON.parse(JSON.stringify(newAssignments))
         }
 
         // Load target assignments from target_score.level_assignments_json
@@ -204,6 +216,7 @@ export default function Phase2Page() {
               newTargetAssignments[ts.target_product_id] = fKeyToOrder
             }
             setTargetAssignments(newTargetAssignments)
+            loadedTargetAssignSnap.current = JSON.parse(JSON.stringify(newTargetAssignments))
           }
         }
       }
@@ -524,17 +537,62 @@ export default function Phase2Page() {
     return null
   }
 
-  async function handleSave(navigate = true) {
+  function assignmentsChanged(): boolean {
+    return (
+      JSON.stringify(assignments) !== JSON.stringify(loadedAssignSnap.current) ||
+      JSON.stringify(targetAssignments) !== JSON.stringify(loadedTargetAssignSnap.current)
+    )
+  }
+
+  function checkAndSave(navigate: boolean) {
     if (navigate) {
       const validationError = validate()
-      if (validationError) {
-        setError(validationError)
-        return
-      }
-    } else {
-      setError('')
+      if (validationError) { setError(validationError); return }
     }
+    setError('')
+    const curIdx = statusIndex(projectStatus)
+    if (frameworkDirty && curIdx >= statusIndex('SURVEY_OPEN')) {
+      pendingSaveNavigate.current = navigate
+      setStaleModal('structural')
+    } else if (!frameworkDirty && assignmentsChanged() && curIdx >= statusIndex('MODEL_RUN')) {
+      pendingSaveNavigate.current = navigate
+      setStaleModal('assignment')
+    } else {
+      handleSave(navigate)
+    }
+  }
 
+  async function handleStaleConfirm() {
+    const kind = staleModal
+    setStaleModal(null)
+    const navigate = pendingSaveNavigate.current
+
+    if (kind === 'structural') {
+      // Clear Phase 3+ data before the save runs (frameworkDirty path will handle attribute/level deletion)
+      const { data: respondentRows } = await supabase
+        .from('respondent').select('id').eq('project_id', projectId)
+      const rIds = respondentRows?.map(r => r.id) ?? []
+      if (rIds.length > 0) {
+        await supabase.from('pairwise_response').delete().in('respondent_id', rIds)
+      }
+      await supabase.from('aggregated_matrix').delete().eq('project_id', projectId)
+      await supabase.from('attribute_weight').delete().eq('project_id', projectId)
+      await supabase.from('level_utility').delete().eq('project_id', projectId)
+      await supabase.from('regression_result').delete().eq('project_id', projectId).is('scenario_id', null)
+      await supabase.from('target_score')
+        .update({ normalized_score: null, point_estimate: null, uncertainty_range_low: null, uncertainty_range_high: null })
+        .eq('project_id', projectId).is('scenario_id', null)
+    } else if (kind === 'assignment') {
+      // Clear solver outputs only
+      await supabase.from('regression_result').delete().eq('project_id', projectId).is('scenario_id', null)
+      await supabase.from('target_score')
+        .update({ normalized_score: null, point_estimate: null, uncertainty_range_low: null, uncertainty_range_high: null })
+        .eq('project_id', projectId).is('scenario_id', null)
+    }
+    handleSave(navigate, kind === 'structural' ? 'FRAMEWORK_COMPLETE' : 'UTILITIES_DERIVED')
+  }
+
+  async function handleSave(navigate = true, forceStatusDowngrade?: 'FRAMEWORK_COMPLETE' | 'UTILITIES_DERIVED') {
     if (savingRef.current) return
     savingRef.current = true
     setSaving(true)
@@ -698,9 +756,13 @@ export default function Phase2Page() {
         }
       }
 
+      // If stale clearing was triggered, use the explicit downgrade status.
+      // Otherwise only advance to FRAMEWORK_COMPLETE, never downgrade.
+      const newStatus = forceStatusDowngrade
+        ?? (statusIndex(projectStatus) > statusIndex('FRAMEWORK_COMPLETE') ? projectStatus : 'FRAMEWORK_COMPLETE')
       await supabase
         .from('project')
-        .update({ status: 'FRAMEWORK_COMPLETE' })
+        .update({ status: newStatus })
         .eq('id', projectId)
 
       if (navigate) router.push(`/dashboard/projects/${projectId}/phase-3`)
@@ -1253,14 +1315,14 @@ export default function Phase2Page() {
           </button>
           <div className="flex gap-3">
             <button
-              onClick={() => handleSave(false)}
+              onClick={() => checkAndSave(false)}
               disabled={saving}
               className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
               {saving ? 'Saving...' : 'Save'}
             </button>
             <button
-              onClick={() => handleSave(true)}
+              onClick={() => checkAndSave(true)}
               disabled={saving}
               className="px-6 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50"
             >
@@ -1270,6 +1332,18 @@ export default function Phase2Page() {
         </div>
 
       </div>
+
+      <StaleWarningModal
+        open={staleModal !== null}
+        title={staleModal === 'structural'
+          ? 'Saving will delete survey responses and all downstream results'
+          : 'Saving will delete Value Pricing Model results'}
+        description={staleModal === 'structural'
+          ? 'Factor or level changes require new survey responses. All existing survey data, coherence review results, and Value Pricing Model outputs will be permanently deleted.'
+          : 'Reference product or target product assignment changes require the Value Pricing Model to be re-run. Your current Phase 5 and 6 results will be permanently deleted.'}
+        onConfirm={handleStaleConfirm}
+        onCancel={() => setStaleModal(null)}
+      />
     </div>
   )
 }

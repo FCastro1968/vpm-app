@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useParams } from 'next/navigation'
+import { StaleWarningModal } from '@/app/components/StaleWarningModal'
+
+const STATUS_ORDER = ['DRAFT','SCOPE_COMPLETE','FRAMEWORK_COMPLETE','SURVEY_OPEN','SURVEY_CLOSED','UTILITIES_DERIVED','MODEL_RUN','COMPLETE']
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -151,6 +154,8 @@ export default function Phase4Page() {
   const [projectName,       setProjectName]        = useState('')
   const [sendingInvite,     setSendingInvite]      = useState<Set<string>>(new Set())
   const [inviteStatus,      setInviteStatus]       = useState<Record<string, 'sent' | 'error'>>({})
+  const [staleWarningOpen,  setStaleWarningOpen]   = useState(false)
+  const [pendingToggle,     setPendingToggle]      = useState<{ respondentId: string; included: boolean } | null>(null)
 
   // ── Load ──────────────────────────────────────────────────────────────────
 
@@ -458,7 +463,17 @@ export default function Phase4Page() {
 
   // ── Toggle respondent inclusion ───────────────────────────────────────────
 
-  async function toggleRespondent(respondentId: string, included: boolean) {
+  function toggleRespondent(respondentId: string, included: boolean) {
+    const staleStatuses = ['UTILITIES_DERIVED', 'MODEL_RUN', 'COMPLETE']
+    if (staleStatuses.includes(projectStatus)) {
+      setPendingToggle({ respondentId, included })
+      setStaleWarningOpen(true)
+      return
+    }
+    executeToggle(respondentId, included)
+  }
+
+  async function executeToggle(respondentId: string, included: boolean) {
     const reason = exclusionReasons[respondentId] ?? null
     await supabase.from('respondent').update({
       included,
@@ -473,6 +488,23 @@ export default function Phase4Page() {
     setAnalysisRan(false)
     setAggregatedResults([])
     setRespondentCRs([])
+  }
+
+  async function handleStaleConfirm() {
+    setStaleWarningOpen(false)
+    if (!pendingToggle) return
+    const { respondentId, included } = pendingToggle
+    setPendingToggle(null)
+    // Clear Phase 5 derived outputs
+    await supabase.from('attribute_weight').delete().eq('project_id', projectId)
+    await supabase.from('level_utility').delete().eq('project_id', projectId)
+    await supabase.from('regression_result').delete().eq('project_id', projectId).is('scenario_id', null)
+    await supabase.from('target_score')
+      .update({ normalized_score: null, point_estimate: null, uncertainty_range_low: null, uncertainty_range_high: null })
+      .eq('project_id', projectId).is('scenario_id', null)
+    await supabase.from('project').update({ status: 'SURVEY_CLOSED' }).eq('id', projectId)
+    setProjectStatus('SURVEY_CLOSED')
+    executeToggle(respondentId, included)
   }
 
   // ── Distributed respondent helpers ───────────────────────────────────────
@@ -1012,6 +1044,13 @@ export default function Phase4Page() {
           )}
         </div>
 
+      <StaleWarningModal
+        open={staleWarningOpen}
+        title="Saving will delete Value Pricing Model results"
+        description="Changing which respondents are included requires re-running the coherence review aggregation and Value Pricing Model. Your current Phase 5 and 6 results will be permanently deleted."
+        onConfirm={handleStaleConfirm}
+        onCancel={() => { setStaleWarningOpen(false); setPendingToggle(null) }}
+      />
       </div>
     </div>
   )

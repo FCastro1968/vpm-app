@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { HelpTip } from '@/app/components/HelpTip'
+import { StaleWarningModal } from '@/app/components/StaleWarningModal'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -286,6 +287,9 @@ export default function Phase3Page() {
   const [surveyStatus,   setSurveyStatus]   = useState<'open' | 'closed'>('open')
   // levelUtilities populated by background GMM before attribute section starts
   const [levelUtilities, setLevelUtilities] = useState<Record<string, Record<string, number>>>({})
+  const [staleWarningOpen, setStaleWarningOpen] = useState(false)
+  const staleConfirmedRef = useRef(false)
+  const pendingStaleAction = useRef<(() => void) | null>(null)
 
   // ── Load ──────────────────────────────────────────────────────────────────
 
@@ -448,6 +452,14 @@ export default function Phase3Page() {
 
   const saveAndGo = useCallback(async (targetIndex: number) => {
     if (!respondentId || questions.length === 0) return
+
+    // If survey was already closed, warn on the first edit (once per session)
+    if (surveyStatus === 'closed' && !staleConfirmedRef.current) {
+      pendingStaleAction.current = () => saveAndGo(targetIndex)
+      setStaleWarningOpen(true)
+      return
+    }
+
     const q = questions[currentIndex]
     const { score, direction } = posToResponse(sliderPos)
 
@@ -502,7 +514,26 @@ export default function Phase3Page() {
     } finally {
       setSaving(false)
     }
-  }, [respondentId, questions, factors, responses, currentIndex, sliderPos, levelUtilities])
+  }, [respondentId, questions, factors, responses, currentIndex, sliderPos, levelUtilities, surveyStatus])
+
+  async function handleStaleConfirm() {
+    setStaleWarningOpen(false)
+    // Clear Phase 4+ downstream data, drop status to SURVEY_OPEN
+    await supabase.from('aggregated_matrix').delete().eq('project_id', projectId)
+    await supabase.from('attribute_weight').delete().eq('project_id', projectId)
+    await supabase.from('level_utility').delete().eq('project_id', projectId)
+    await supabase.from('regression_result').delete().eq('project_id', projectId).is('scenario_id', null)
+    await supabase.from('target_score')
+      .update({ normalized_score: null, point_estimate: null, uncertainty_range_low: null, uncertainty_range_high: null })
+      .eq('project_id', projectId).is('scenario_id', null)
+    await supabase.from('project').update({ status: 'SURVEY_OPEN' }).eq('id', projectId)
+    // Allow all future saves in this session without re-warning
+    staleConfirmedRef.current = true
+    setSurveyStatus('open')
+    // Execute the queued save
+    pendingStaleAction.current?.()
+    pendingStaleAction.current = null
+  }
 
   async function handleCloseSurvey() {
     setClosing(true)
@@ -878,6 +909,14 @@ export default function Phase3Page() {
 
 
 
+      <StaleWarningModal
+        open={staleWarningOpen}
+        title="Editing will delete coherence review and Value Pricing Model results"
+        description="This survey has already been completed. Changing any response will require re-running the coherence review analysis and Value Pricing Model. All existing results will be permanently deleted."
+        confirmLabel="Delete Results & Edit"
+        onConfirm={handleStaleConfirm}
+        onCancel={() => { setStaleWarningOpen(false); pendingStaleAction.current = null }}
+      />
     </div>
   )
 }

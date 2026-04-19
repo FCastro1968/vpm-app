@@ -1,8 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useParams } from 'next/navigation'
+import { StaleWarningModal } from '@/app/components/StaleWarningModal'
+
+const STATUS_ORDER = ['DRAFT','SCOPE_COMPLETE','FRAMEWORK_COMPLETE','SURVEY_OPEN','SURVEY_CLOSED','UTILITIES_DERIVED','MODEL_RUN','COMPLETE']
+function statusIndex(s: string) { return STATUS_ORDER.indexOf(s) }
 
 type UseCaseType = 'NPI' | 'REPOSITION'
 type BenchmarkPriceBasis = 'LIST_PRICE' | 'AVERAGE_MARKET_PRICE' | 'CUSTOM'
@@ -65,6 +69,11 @@ export default function Phase1Page() {
   const [error,                setError]                = useState('')
   const [aiError,              setAiError]              = useState('')
   const [loaded,               setLoaded]               = useState(false)
+  const [projectStatus,        setProjectStatus]        = useState('DRAFT')
+  const [staleWarningOpen,     setStaleWarningOpen]     = useState(false)
+  const pendingSaveRef = useRef<(() => Promise<void>) | null>(null)
+  // Snapshot of benchmark prices/shares as loaded from DB — used for stale detection
+  const loadedBenchSnap = useRef<Map<string, { price: string; share: string }>>(new Map())
 
   // ── Load ──────────────────────────────────────────────────────────────────
 
@@ -72,7 +81,7 @@ export default function Phase1Page() {
     async function load() {
       const { data: project } = await supabase
         .from('project')
-        .select('name, currency, geographic_scope, target_segment, benchmark_price_basis, benchmark_price_basis_custom_description, category_anchor')
+        .select('name, currency, geographic_scope, target_segment, benchmark_price_basis, benchmark_price_basis_custom_description, category_anchor, status')
         .eq('id', projectId)
         .single()
 
@@ -84,6 +93,7 @@ export default function Phase1Page() {
         setPriceBasis(project.benchmark_price_basis ?? '')
         setPriceBasisCustomDesc(project.benchmark_price_basis_custom_description ?? '')
         setCategoryAnchor(project.category_anchor ?? '')
+        setProjectStatus(project.status ?? 'DRAFT')
       }
 
       const { data: existingTargets } = await supabase
@@ -106,11 +116,18 @@ export default function Phase1Page() {
         .order('name')
 
       if (existingBenchmarks && existingBenchmarks.length > 0) {
-        setBenchmarks(existingBenchmarks.map(b => ({
+        const mapped = existingBenchmarks.map(b => ({
           ...b,
           market_price: b.market_price?.toString() ?? '',
           market_share_pct: b.market_share_pct?.toString() ?? '',
-        })))
+        }))
+        setBenchmarks(mapped)
+        // Snapshot for stale detection
+        const snap = new Map<string, { price: string; share: string }>()
+        for (const b of mapped) {
+          if (b.id) snap.set(b.id, { price: b.market_price, share: b.market_share_pct })
+        }
+        loadedBenchSnap.current = snap
       }
 
       setLoaded(true)
@@ -207,14 +224,45 @@ export default function Phase1Page() {
     return null
   }
 
-  async function handleSave() {
-    const validationError = validate()
-    if (validationError) { setError(validationError); return }
+  function hasSolverInputChanged(): boolean {
+    const accepted = benchmarks.filter(b => b.name.trim() && (!b.aiSuggested || b.accepted))
+    for (const b of accepted) {
+      if (!b.id) return true  // new benchmark added
+      const snap = loadedBenchSnap.current.get(b.id)
+      if (!snap) return true  // new benchmark (id assigned elsewhere)
+      if (b.market_price !== snap.price || b.market_share_pct !== snap.share) return true
+    }
+    // Check for removed benchmarks
+    for (const id of loadedBenchSnap.current.keys()) {
+      const still = accepted.find(b => b.id === id)
+      if (!still) return true
+    }
+    return false
+  }
 
+  async function executeSave() {
     setSaving(true)
     setError('')
+    const solverInputChanged = hasSolverInputChanged()
+    const curIdx = statusIndex(projectStatus)
 
     try {
+      // Determine new status — never downgrade unless we're clearing stale data
+      let newStatus: string
+      if (curIdx < statusIndex('SCOPE_COMPLETE')) {
+        newStatus = 'SCOPE_COMPLETE'
+      } else if (solverInputChanged && curIdx >= statusIndex('MODEL_RUN')) {
+        // Clear solver outputs and drop to UTILITIES_DERIVED
+        await supabase.from('regression_result')
+          .delete().eq('project_id', projectId).is('scenario_id', null)
+        await supabase.from('target_score')
+          .update({ normalized_score: null, point_estimate: null, uncertainty_range_low: null, uncertainty_range_high: null })
+          .eq('project_id', projectId).is('scenario_id', null)
+        newStatus = 'UTILITIES_DERIVED'
+      } else {
+        newStatus = projectStatus  // no change
+      }
+
       const { error: projectError } = await supabase
         .from('project')
         .update({
@@ -225,7 +273,7 @@ export default function Phase1Page() {
           benchmark_price_basis: priceBasis,
           benchmark_price_basis_custom_description: priceBasisCustomDesc || null,
           category_anchor: categoryAnchor || null,
-          status: 'SCOPE_COMPLETE',
+          status: newStatus,
         })
         .eq('id', projectId)
       if (projectError) throw projectError
@@ -272,6 +320,31 @@ export default function Phase1Page() {
     } finally {
       setSaving(false)
     }
+  }
+
+  function handleSave() {
+    const validationError = validate()
+    if (validationError) { setError(validationError); return }
+    setError('')
+
+    const curIdx = statusIndex(projectStatus)
+    if (hasSolverInputChanged() && curIdx >= statusIndex('MODEL_RUN')) {
+      pendingSaveRef.current = executeSave
+      setStaleWarningOpen(true)
+    } else {
+      executeSave()
+    }
+  }
+
+  function handleStaleConfirm() {
+    setStaleWarningOpen(false)
+    pendingSaveRef.current?.()
+    pendingSaveRef.current = null
+  }
+
+  function handleStaleCancel() {
+    setStaleWarningOpen(false)
+    pendingSaveRef.current = null
   }
 
   if (!loaded) return <div className="text-gray-400 text-sm">Loading...</div>
@@ -625,6 +698,13 @@ export default function Phase1Page() {
         </div>
       </div>
 
+      <StaleWarningModal
+        open={staleWarningOpen}
+        title="Saving will delete downstream results"
+        description="Reference product price or market share changes require the Value Pricing Model to be re-run. Your current Phase 5 and 6 results will be permanently deleted."
+        onConfirm={handleStaleConfirm}
+        onCancel={handleStaleCancel}
+      />
     </div>
   )
 }

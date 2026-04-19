@@ -428,16 +428,18 @@ export default function Phase4Page() {
         }
       }
 
-      // Save aggregated matrices + CR scores
+      // Save aggregated matrices + CR scores — delete-then-insert to avoid
+      // NULL attribute_id breaking upsert uniqueness (NULL != NULL in PG).
+      await supabase.from('aggregated_matrix').delete().eq('project_id', projectId)
       for (const agg of newAggregated) {
-        await supabase.from('aggregated_matrix').upsert({
+        await supabase.from('aggregated_matrix').insert({
           project_id:       projectId,
           comparison_type:  agg.comparison_type,
           attribute_id:     agg.attribute_id,
           matrix_json:      {},
           cr_score:         agg.cr,
           respondent_count: includedRespondents.length,
-        }, { onConflict: 'project_id,comparison_type,attribute_id' })
+        })
       }
 
       // Save attribute weights

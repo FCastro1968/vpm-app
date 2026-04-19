@@ -309,6 +309,7 @@ export default function Phase5Page() {
       prev.map(b => b.id === benchmarkId ? { ...b, included_in_regression: included } : b)
     )
     setSolverResult(null)
+    setAiInterpretation('')
   }
 
   // ── Run solver ────────────────────────────────────────────────────────────
@@ -636,6 +637,7 @@ export default function Phase5Page() {
     )
     setBenchmarks(newBenchmarks)
     setSolverResult(null)
+    setAiInterpretation('')
 
     await runSolver(newBenchmarks.filter(b => b.included_in_regression))
   }

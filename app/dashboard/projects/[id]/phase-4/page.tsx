@@ -504,6 +504,7 @@ export default function Phase4Page() {
       .eq('project_id', projectId).is('scenario_id', null)
     await supabase.from('project').update({ status: 'SURVEY_CLOSED' }).eq('id', projectId)
     setProjectStatus('SURVEY_CLOSED')
+    router.refresh()
     executeToggle(respondentId, included)
   }
 

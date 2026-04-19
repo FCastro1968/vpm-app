@@ -530,6 +530,7 @@ export default function Phase3Page() {
     // Allow all future saves in this session without re-warning
     staleConfirmedRef.current = true
     setSurveyStatus('open')
+    router.refresh()
     // Execute the queued save
     pendingStaleAction.current?.()
     pendingStaleAction.current = null

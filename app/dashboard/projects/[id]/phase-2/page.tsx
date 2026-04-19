@@ -766,6 +766,7 @@ export default function Phase2Page() {
         .eq('id', projectId)
 
       if (navigate) router.push(`/dashboard/projects/${projectId}/phase-3`)
+      else router.refresh()
     } catch (err: any) {
       setError(err.message ?? 'An error occurred while saving')
     } finally {

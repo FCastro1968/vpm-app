@@ -91,6 +91,12 @@ def _scale_correct_matrix(m: np.ndarray) -> np.ndarray:
     return corrected
 
 
+def is_scale_adjusted(matrix) -> bool:
+    """Return True if _scale_correct_matrix changes any entry in matrix."""
+    m = np.array(matrix, dtype=float)
+    return not np.allclose(m, _scale_correct_matrix(m))
+
+
 def gmm_priority_vector(matrix):
     m = np.array(matrix, dtype=float)
     n = m.shape[0]

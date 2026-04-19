@@ -13,6 +13,7 @@ import uvicorn
 from solver import (
     gmm_priority_vector,
     consistency_ratio,
+    is_scale_adjusted,
     aggregate_pairwise_matrices,
     build_value_index_scores,
     run_solver,
@@ -34,6 +35,7 @@ class PriorityVectorResponse(BaseModel):
     weights: list[float]
     consistency_ratio: float
     cr_flag: str  # 'OK', 'MARGINAL', 'INCONSISTENT'
+    scale_adjusted: bool
 
 
 class AggregateMatrixRequest(BaseModel):
@@ -44,6 +46,7 @@ class AggregateMatrixResponse(BaseModel):
     weights: list[float]
     consistency_ratio: float
     cr_flag: str
+    scale_adjusted: bool
 
 
 class SolverRequest(BaseModel):
@@ -138,7 +141,8 @@ def derive_priority_vector(req: PriorityVectorRequest):
         return PriorityVectorResponse(
             weights=weights,
             consistency_ratio=round(cr, 6),
-            cr_flag=cr_flag
+            cr_flag=cr_flag,
+            scale_adjusted=is_scale_adjusted(req.matrix),
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -159,7 +163,8 @@ def aggregate_matrix(req: AggregateMatrixRequest):
             aggregated_matrix=aggregated,
             weights=weights,
             consistency_ratio=round(cr, 6),
-            cr_flag=cr_flag
+            cr_flag=cr_flag,
+            scale_adjusted=is_scale_adjusted(aggregated),
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

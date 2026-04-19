@@ -47,6 +47,7 @@ interface CRResult {
   attribute_id: string | null
   cr: number
   cr_flag: 'OK' | 'MARGINAL' | 'INCONSISTENT'
+  scale_adjusted?: boolean
 }
 
 interface RespondentCRs {
@@ -60,6 +61,7 @@ interface AggregatedResult {
   attribute_id: string | null
   cr: number
   cr_flag: 'OK' | 'MARGINAL' | 'INCONSISTENT'
+  scale_adjusted?: boolean
   weights: number[]       // GMM priority vector
   item_ids: string[]      // attribute or level IDs in matrix order
 }
@@ -330,6 +332,7 @@ export default function Phase4Page() {
             attribute_id: null,
             cr: result.consistency_ratio,
             cr_flag: result.cr_flag,
+            scale_adjusted: result.scale_adjusted ?? false,
           })
         }
 
@@ -349,6 +352,7 @@ export default function Phase4Page() {
             attribute_id: factor.id,
             cr: result.consistency_ratio,
             cr_flag: result.cr_flag,
+            scale_adjusted: result.scale_adjusted ?? false,
           })
         }
 
@@ -375,6 +379,7 @@ export default function Phase4Page() {
           attribute_id: null,
           cr: result.consistency_ratio,
           cr_flag: result.cr_flag,
+          scale_adjusted: result.scale_adjusted ?? false,
           weights: result.weights,
           item_ids: factorIds,
         })
@@ -401,6 +406,7 @@ export default function Phase4Page() {
           attribute_id: factor.id,
           cr: result.consistency_ratio,
           cr_flag: result.cr_flag,
+          scale_adjusted: result.scale_adjusted ?? false,
           weights: result.weights,
           item_ids: levelIds,
         })
@@ -989,6 +995,11 @@ export default function Phase4Page() {
                                   Review →
                                 </button>
                               )}
+                              {cr.scale_adjusted && (
+                                <span className="text-xs text-gray-400 italic" title="Score adjusted for AHP scale boundary comparisons">
+                                  scale-adjusted
+                                </span>
+                              )}
                               <span className={`px-2 py-0.5 rounded border font-medium ${crColor(cr.cr_flag)}`}>
                                 {cr.cr.toFixed(3)} — {crLabel(cr.cr_flag)}
                               </span>
@@ -1037,6 +1048,7 @@ export default function Phase4Page() {
               <p className="text-xs text-gray-500">
                 Scores are computed from the geometrically aggregated matrix across all included respondents.
                 Scores below 0.10 are acceptable. Scores above 0.20 warrant review before proceeding.
+                Where extreme ratings are logically consistent with adjacent comparisons, scores are scale-adjusted to avoid penalising scale-boundary constraints.
               </p>
               <button
                 onClick={runAiSummary}
@@ -1099,9 +1111,16 @@ export default function Phase4Page() {
                       </span>
                     </div>
                   </div>
-                  <span className={`px-3 py-1 rounded border text-xs font-medium ${crColor(r.cr_flag)}`}>
-                    {r.cr.toFixed(3)} — {crLabel(r.cr_flag)}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {r.scale_adjusted && (
+                      <span className="text-xs text-gray-400 italic" title="Score adjusted for AHP scale boundary comparisons">
+                        scale-adjusted
+                      </span>
+                    )}
+                    <span className={`px-3 py-1 rounded border text-xs font-medium ${crColor(r.cr_flag)}`}>
+                      {r.cr.toFixed(3)} — {crLabel(r.cr_flag)}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>

@@ -1080,7 +1080,7 @@ function FactorSensitivityPage({ data }: { data: PDFReportData }) {
         <Text style={{ fontSize: 8, color: GRAY, fontFamily: 'Helvetica-Bold', flex: 0.9, textAlign: 'right' }}>R² Δ</Text>
         <Text style={{ fontSize: 8, color: GRAY, fontFamily: 'Helvetica-Bold', flex: 1.1, textAlign: 'right' }}>Price excl.</Text>
         <Text style={{ fontSize: 8, color: GRAY, fontFamily: 'Helvetica-Bold', flex: 1.1, textAlign: 'right' }}>Price Δ</Text>
-        <Text style={{ fontSize: 8, color: GRAY, fontFamily: 'Helvetica-Bold', flex: 1.8, textAlign: 'center' }}>Δ bar</Text>
+        <Text style={{ fontSize: 8, color: GRAY, fontFamily: 'Helvetica-Bold', flex: 1.8, textAlign: 'center' }}>Relative Impact</Text>
       </View>
 
       {rows.map((row, i) => {

@@ -893,6 +893,24 @@ export default function Phase4Page() {
                         {expandedRespondent === r.id ? 'Hide scores ▲' : 'View scores ▼'}
                       </button>
                     )}
+                    {/* Delete button — FACILITATED only */}
+                    {r.mode === 'FACILITATED' && (
+                      <button
+                        onClick={async () => {
+                          if (!confirm(`Remove ${r.name || r.email} and all their survey responses? This cannot be undone.`)) return
+                          await supabase.from('pairwise_response').delete().eq('respondent_id', r.id)
+                          await supabase.from('respondent').delete().eq('id', r.id)
+                          setRespondents(prev => prev.filter(x => x.id !== r.id))
+                          setAnalysisRan(false)
+                          setAggregatedResults([])
+                          setRespondentCRs([])
+                        }}
+                        className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+                        title="Remove respondent"
+                      >
+                        ✕
+                      </button>
+                    )}
                     {/* Toggle switch */}
                     {r.mode === 'DISTRIBUTED' && !r.submitted_at ? (
                       <span className="text-xs text-gray-400 italic">Awaiting submission</span>

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { renderToBuffer } from '@react-pdf/renderer'
 import React from 'react'
 import { createServiceClient } from '@/lib/supabase/service'
-import { VPMReport, PDFReportData, PDFFactor, PDFBenchmark, PDFTarget } from '@/lib/pdf/VPMReport'
+import { VPMReport, PDFReportData, PDFFactor, PDFBenchmark, PDFTarget, PDFSensitivityRow } from '@/lib/pdf/VPMReport'
 
 export async function GET(
   req: NextRequest,
@@ -118,11 +118,13 @@ export async function GET(
       .select('benchmark_id, attribute_id, level_id')
       .in('benchmark_id', (benchData ?? []).map(b => b.id))
 
+    const benchAssignmentsArray: Record<string, string>[] = []
     const benchmarks: PDFBenchmark[] = (benchData ?? []).map(bm => {
       const assignments: Record<string, string> = {}
       for (const a of benchAssignData ?? []) {
         if (a.benchmark_id === bm.id) assignments[a.attribute_id] = a.level_id
       }
+      benchAssignmentsArray.push(assignments)
       // Prefer stored solver VI; fall back to Option 2 until Phase 5 is re-run
       const vi         = bm.id in storedBenchmarkVIs
         ? storedBenchmarkVIs[bm.id]
@@ -171,6 +173,77 @@ export async function GET(
       }
     }).filter(t => t.point_estimate > 0)
 
+    // ── Benchmark price sensitivity (tornado) ────────────────────────────────
+    let sensitivity: PDFSensitivityRow[] | undefined
+    try {
+      const solverUrl = process.env.SOLVER_URL || 'http://localhost:8000'
+      const RANGE_PCT = 10
+
+      // attribute_levels: all level IDs per attribute (for solver VI computation)
+      const attributeLevelsMap: Record<string, string[]> = {}
+      for (const l of levelData ?? []) {
+        if (!attributeLevelsMap[l.attribute_id]) attributeLevelsMap[l.attribute_id] = []
+        attributeLevelsMap[l.attribute_id].push(l.id)
+      }
+
+      // target assignments from stored level_assignments_json
+      const targetAssignmentsArray = (targetData ?? []).map(t => {
+        const ts = targetScoreData?.find(ts => ts.target_product_id === t.id)
+        return (ts?.level_assignments_json as Record<string, string>) ?? {}
+      })
+
+      const basePrices       = (benchData ?? []).map(bm => bm.market_price as number)
+      const marketShareWeights = (benchData ?? []).map(bm => bm.market_share_pct ?? 1)
+
+      const basePayload = {
+        attribute_ids:        factors.map(f => f.id),
+        attribute_weights:    weightMap,
+        level_utilities:      utilityMap,
+        attribute_levels:     attributeLevelsMap,
+        benchmark_ids:        (benchData ?? []).map(bm => bm.id),
+        benchmark_assignments: benchAssignmentsArray,
+        market_prices:        basePrices,
+        market_share_weights: marketShareWeights,
+        target_ids:           (targetData ?? []).map(t => t.id),
+        target_assignments:   targetAssignmentsArray,
+        run_sensitivity:      false,
+      }
+
+      const sensRows: PDFSensitivityRow[] = []
+      for (const bm of benchData ?? []) {
+        const bmIdx = (benchData ?? []).indexOf(bm)
+        const lowPricesArr  = basePrices.map((p, i) => i === bmIdx ? p * (1 - RANGE_PCT / 100) : p)
+        const highPricesArr = basePrices.map((p, i) => i === bmIdx ? p * (1 + RANGE_PCT / 100) : p)
+
+        const [lowRes, highRes] = await Promise.all([
+          fetch(`${solverUrl}/solve`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...basePayload, market_prices: lowPricesArr }),
+          }).then(r => r.json()),
+          fetch(`${solverUrl}/solve`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...basePayload, market_prices: highPricesArr }),
+          }).then(r => r.json()),
+        ])
+
+        if (lowRes.success && highRes.success) {
+          sensRows.push({
+            benchId:    bm.id,
+            benchName:  bm.name,
+            rangePct:   RANGE_PCT,
+            basePrice:  bm.market_price,
+            lowPrices:  (lowRes.target_results  ?? []).map((tr: any) => tr.point_estimate as number),
+            highPrices: (highRes.target_results ?? []).map((tr: any) => tr.point_estimate as number),
+          })
+        }
+      }
+      if (sensRows.length) sensitivity = sensRows
+    } catch (sensErr) {
+      console.warn('Sensitivity computation skipped:', sensErr)
+    }
+
     // ── Assemble report data ──────────────────────────────────────────────────
     const basis = project.benchmark_price_basis
     const priceBasisLabel =
@@ -193,6 +266,7 @@ export async function GET(
       benchmarks,
       targets,
       benchmarkResiduals,
+      sensitivity,
     }
 
     // ── Render PDF ────────────────────────────────────────────────────────────

@@ -33,6 +33,15 @@ export interface PDFTarget {
   factor_contributions: { factor_id: string; name: string; contribution: number }[]
 }
 
+export interface PDFSensitivityRow {
+  benchId: string
+  benchName: string
+  rangePct: number
+  basePrice: number
+  lowPrices: number[]   // per target, same order as data.targets
+  highPrices: number[]  // per target
+}
+
 export interface PDFReportData {
   projectName: string
   priceBasis: string
@@ -46,6 +55,7 @@ export interface PDFReportData {
   benchmarks: PDFBenchmark[]
   targets: PDFTarget[]
   benchmarkResiduals: number[]
+  sensitivity?: PDFSensitivityRow[]
 }
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
@@ -805,6 +815,172 @@ function PositioningTablePage({ data }: { data: PDFReportData }) {
   )
 }
 
+// ─── Reference Price Sensitivity page ────────────────────────────────────────
+
+function SensitivityPage({ data }: { data: PDFReportData }) {
+  const { sensitivity, targets } = data
+  if (!sensitivity?.length || !targets.length) return null
+
+  // Sort by max swing descending (highest influence first)
+  const rows = [...sensitivity].sort((a, b) => {
+    const swingA = Math.max(...a.lowPrices.map((lp, i) => Math.abs((a.highPrices[i] ?? 0) - lp)))
+    const swingB = Math.max(...b.lowPrices.map((lp, i) => Math.abs((b.highPrices[i] ?? 0) - lp)))
+    return swingB - swingA
+  })
+
+  // Layout
+  const W       = 700
+  const LABEL_W = 180
+  const CHART_W = 350
+  const ROW_H   = 34
+  const LEG_H   = 20   // legend row at top
+  const BOT_PAD = 24   // x-axis labels
+  const H       = LEG_H + rows.length * ROW_H + BOT_PAD
+
+  // X scale
+  const allPrices: number[] = []
+  for (const row of rows) {
+    row.lowPrices.forEach(p => allPrices.push(p))
+    row.highPrices.forEach(p => allPrices.push(p))
+    targets.forEach(t => allPrices.push(t.point_estimate))
+  }
+  const rawMin = Math.min(...allPrices)
+  const rawMax = Math.max(...allPrices)
+  const pad    = (rawMax - rawMin) * 0.08 || 100
+  const xMin   = rawMin - pad
+  const xMax   = rawMax + pad
+  const xRange = xMax - xMin
+  const toX    = (price: number) => LABEL_W + ((price - xMin) / xRange) * CHART_W
+
+  const ticks: number[] = []
+  for (let i = 0; i <= 4; i++) ticks.push(xMin + (xRange * i) / 4)
+
+  const BAR_H = 8
+  const BAR_GAP = 2
+
+  return (
+    <PageShell projectName={data.projectName} section="Reference Price Sensitivity">
+      <Text style={s.sectionTitle}>Reference Price Sensitivity</Text>
+      <Text style={s.sectionSubtitle}>
+        How the price recommendation shifts when each reference product's price varies ±10%, holding all others constant. Wider bars indicate higher influence.
+      </Text>
+
+      <Svg width={W} height={H}>
+
+        {/* Legend: target color dots + names */}
+        {targets.map((t, ti) => {
+          const legendX = ti * 160
+          return (
+            <G key={t.id}>
+              <Rect x={legendX} y={4} width={10} height={10} rx={2} fill={TARGET_COLORS[ti] ?? GRAY} />
+              <Text style={{ fontSize: 8, fill: DARK }}
+                x={legendX + 14} y={13} textAnchor="start">
+                {t.name.length > 22 ? t.name.slice(0, 21) + '…' : t.name}
+              </Text>
+            </G>
+          )
+        })}
+
+        {/* Dashed grid lines + x-axis tick labels */}
+        {ticks.map((tick, i) => {
+          const x = toX(tick)
+          return (
+            <G key={i}>
+              <Line x1={x} y1={LEG_H} x2={x} y2={LEG_H + rows.length * ROW_H}
+                stroke={i === 0 ? '#9ca3af' : 'rgba(0,0,0,0.07)'} strokeWidth={i === 0 ? 0.75 : 0.5}
+                strokeDasharray={i === 0 ? '' : '3,3'} />
+              <Text style={{ fontSize: 7, fill: '#6b7280' }}
+                x={x} y={LEG_H + rows.length * ROW_H + 14} textAnchor="middle">
+                {'$' + Math.round(tick).toLocaleString()}
+              </Text>
+            </G>
+          )
+        })}
+
+        {/* Per-target baseline dashed lines */}
+        {targets.map((t, ti) => (
+          <Line key={t.id}
+            x1={toX(t.point_estimate)} y1={LEG_H}
+            x2={toX(t.point_estimate)} y2={LEG_H + rows.length * ROW_H}
+            stroke={TARGET_COLORS[ti] ?? GRAY} strokeWidth={1}
+            strokeDasharray="4,3"
+          />
+        ))}
+
+        {/* Rows */}
+        {rows.map((row, ri) => {
+          const rowY  = LEG_H + ri * ROW_H
+          const rowCY = rowY + ROW_H / 2
+          const totalBarH = targets.length * BAR_H + (targets.length - 1) * BAR_GAP
+          const yTop  = rowCY - totalBarH / 2
+          const bg    = ri % 2 === 0 ? '#f9fafb' : '#ffffff'
+
+          return (
+            <G key={row.benchId}>
+              <Rect x={0} y={rowY} width={W} height={ROW_H} fill={bg} />
+
+              {/* Benchmark name */}
+              <Text style={{ fontSize: 7.5, fill: DARK }}
+                x={4} y={rowCY - 1} textAnchor="start">
+                {row.benchName.length > 28 ? row.benchName.slice(0, 27) + '…' : row.benchName}
+              </Text>
+              <Text style={{ fontSize: 6.5, fill: '#9ca3af' }}
+                x={4} y={rowCY + 9} textAnchor="start">
+                ±{row.rangePct}%
+              </Text>
+
+              {/* Bars per target */}
+              {targets.map((target, ti) => {
+                const low   = row.lowPrices[ti]  ?? 0
+                const high  = row.highPrices[ti] ?? 0
+                const xLow  = toX(low)
+                const xHigh = toX(high)
+                const barY  = yTop + ti * (BAR_H + BAR_GAP)
+
+                return (
+                  <G key={target.id}>
+                    <Rect
+                      x={Math.min(xLow, xHigh)} y={barY}
+                      width={Math.max(Math.abs(xHigh - xLow), 2)} height={BAR_H}
+                      fill={TARGET_COLORS[ti] ?? GRAY} rx={1.5}
+                    />
+                    <Line x1={xLow}  y1={barY - 2} x2={xLow}  y2={barY + BAR_H + 2}
+                      stroke={TARGET_COLORS[ti] ?? GRAY} strokeWidth={1.5} />
+                    <Line x1={xHigh} y1={barY - 2} x2={xHigh} y2={barY + BAR_H + 2}
+                      stroke={TARGET_COLORS[ti] ?? GRAY} strokeWidth={1.5} />
+                  </G>
+                )
+              })}
+
+              {/* Right-side low — high annotations */}
+              {targets.map((target, ti) => {
+                const low  = row.lowPrices[ti]  ?? 0
+                const high = row.highPrices[ti] ?? 0
+                const barY = yTop + ti * (BAR_H + BAR_GAP)
+                return (
+                  <Text key={target.id}
+                    style={{ fontSize: 6.5, fill: TARGET_COLORS[ti] ?? GRAY }}
+                    x={LABEL_W + CHART_W + 8} y={barY + BAR_H / 2 + 2}
+                    textAnchor="start">
+                    {'$' + Math.round(low).toLocaleString()} — {'$' + Math.round(high).toLocaleString()}
+                  </Text>
+                )
+              })}
+            </G>
+          )
+        })}
+
+        {/* Bottom axis line */}
+        <Line
+          x1={LABEL_W} y1={LEG_H + rows.length * ROW_H}
+          x2={LABEL_W + CHART_W} y2={LEG_H + rows.length * ROW_H}
+          stroke="#e2e8f0" strokeWidth={1}
+        />
+      </Svg>
+    </PageShell>
+  )
+}
+
 // ─── Root document ────────────────────────────────────────────────────────────
 
 export function VPMReport({ data }: { data: PDFReportData }) {
@@ -819,6 +995,7 @@ export function VPMReport({ data }: { data: PDFReportData }) {
       <ValueMapPage data={data} />
       <FactorContributionsPage data={data} />
       <PositioningTablePage data={data} />
+      {data.sensitivity?.length ? <SensitivityPage data={data} /> : null}
     </Document>
   )
 }

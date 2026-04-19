@@ -64,7 +64,7 @@ Priority tiers:
 
 | Pri | Item | Notes |
 |-----|------|-------|
-| 🟡 | AI coherence guidance | Plain-language explanation of Coherence Score + suggest which comparisons to review. |
+| 🟡 | ✓ AI coherence guidance | DONE — `explain_coherence` task in `/api/ai/route.ts`; "✦ AI Summary" button inline with description (right-aligned); AI card renders above flag banners for prominence. 3–4 sentence plain-language interpretation of survey consistency. |
 | 🟡 | Survey reminder email | Send a nudge to distributed respondents who haven't submitted. Triggered manually by facilitator or auto-triggered N days before deadline. Requires email infrastructure (see invite email options below). |
 | 🟡 | Survey invite email — Option A (mailto prefill) | Superseded by Option B. |
 | 🟡 | ✓ Survey invite email — Option B (transactional, Resend) | DONE — `app/api/send-survey-invite/route.ts` sends branded HTML email via Resend SDK. Phase 4 "+ Add & Invite" auto-sends on add; per-row "Send invite" / "Resend" with inline sent/error feedback. Uses `RESEND_API_KEY` + `RESEND_FROM_EMAIL` env vars (currently using `onboarding@resend.dev` test sender until domain finalized). |
@@ -95,7 +95,7 @@ Priority tiers:
 |-----|------|-------|
 | 🔴 | Executive summary PDF export | Value Map, Factor Contributions, Positioning Table, Price Recommendation, optional AI narrative. PDF route generating end-to-end; cover page (incl. Target Segment), price recs, and positioning table are solid. Factor Contributions chart and dollar-scale header in place but chart itself still needs lollipop rebuild. |
 | 🔴 | PDF Factor Contributions chart — rebuild to match Phase 6 | Current PDF renders a basic horizontal bar chart. Need faithful SVG/react-pdf recreation using `<Svg>` primitives: gray range bar per factor, avg tick, dot per product (hollow=ref, solid=target, amber/blue palette), split-dot for collisions, total row with divider and model-implied price scale. Dollar-scale tick header is already implemented. |
-| 🟡 | AI narrative summary | AI-drafted plain-language positioning narrative. User reviews and approves. Feeds into exports. |
+| 🟡 | ✓ AI narrative summary | DONE — `generate_narrative` task in `/api/ai/route.ts`; "Positioning Narrative" section above Value Map with "✦ Generate Narrative" button, copy-to-clipboard, regenerate action. 4–6 sentence executive-level summary. Feeds into future PDF/PPTX exports. |
 | 🟡 | XLSX raw data export | Pairwise matrices, weights, utilities, benchmark scores, solver results, sensitivity. |
 | 🟡 | ✓ Value Map interpretation tools | DONE — quadrant shading (soft red = overpriced above diagonal, soft blue = underpriced below), toggleable product name labels ("Labels" button) with connector lines for displaced labels. |
 | 🟡 | PPTX export | Executive summary deck: Value Map + Factor Contributions + Positioning Table + Recommendation. |

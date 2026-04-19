@@ -90,7 +90,7 @@ export default function CloneProjectModal({ project, onClose }: Props) {
         for (const f of srcFactors) {
           const { data: newFactor, error: fErr } = await supabase
             .from('attribute')
-            .insert({ project_id: newId, name: f.name, description: f.description, display_order: f.display_order })
+            .insert({ project_id: newId, name: f.name, description: f.description, display_order: f.display_order, is_ordinal: f.is_ordinal ?? true })
             .select()
             .single()
           if (fErr) console.error('FACTOR INSERT ERROR:', fErr.message)

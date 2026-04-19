@@ -63,13 +63,18 @@ def _scale_correct_matrix(m: np.ndarray) -> np.ndarray:
             if not is_capped(i, j):
                 continue
 
+            # Always compute implied ratios in the "strong" (>= 1) direction
+            # so that the replacement value is > 1 and the > SCALE_MAX guard works.
+            i_preferred = m[i][j] >= 1.0
+            strong, weak = (i, j) if i_preferred else (j, i)
+
             clean, all_implied = [], []
             for k in range(n):
                 if k == i or k == j:
                     continue
-                implied = m[i][k] * m[k][j]
+                implied = m[strong][k] * m[k][weak]
                 all_implied.append(implied)
-                if not is_capped(i, k) and not is_capped(k, j):
+                if not is_capped(strong, k) and not is_capped(k, weak):
                     clean.append(implied)
 
             if clean:
@@ -80,8 +85,8 @@ def _scale_correct_matrix(m: np.ndarray) -> np.ndarray:
                 continue
 
             if replacement > SCALE_MAX:
-                corrected[i][j] = replacement
-                corrected[j][i] = 1.0 / replacement
+                corrected[strong][weak] = replacement
+                corrected[weak][strong] = 1.0 / replacement
 
     return corrected
 

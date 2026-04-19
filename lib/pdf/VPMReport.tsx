@@ -570,19 +570,43 @@ function FactorContributionsPage({ data }: { data: PDFReportData }) {
                 stroke="#6b7280" strokeWidth={1.5}
               />
 
-              {/* Per-product dots — refs hollow, targets filled */}
-              {allProducts.map((p, pi) => {
-                const contrib = contribs[pi]
-                const cx = toX(contrib)
-                const r  = p.isTarget ? 4.5 : 3.5
-                return (
-                  <Circle key={pi} cx={cx} cy={dotCY} r={r}
-                    fill={p.isTarget ? p.color : 'white'}
-                    stroke={p.color}
-                    strokeWidth={1.4}
-                  />
-                )
-              })}
+              {/* Per-product dots — grouped by x position, split-color + count badge when multiple share a value */}
+              {(() => {
+                const groups = new Map<number, number[]>()
+                allProducts.forEach((_, pi) => {
+                  const rx = Math.round(toX(contribs[pi]))
+                  if (!groups.has(rx)) groups.set(rx, [])
+                  groups.get(rx)!.push(pi)
+                })
+                return Array.from(groups.entries()).map(([cx, pis], gi) => {
+                  const r = 4.5
+                  if (pis.length === 1) {
+                    const p = allProducts[pis[0]]
+                    return (
+                      <Circle key={gi} cx={cx} cy={dotCY} r={r}
+                        fill={p.isTarget ? p.color : 'white'}
+                        stroke={p.color} strokeWidth={1.4}
+                      />
+                    )
+                  }
+                  const targetPis = pis.filter(pi => allProducts[pi].isTarget)
+                  let splitColors: string[]
+                  let hollow = false
+                  if (targetPis.length >= 1) {
+                    splitColors = targetPis.slice(0, 3).map(pi => allProducts[pi].color)
+                  } else {
+                    splitColors = ['#9ca3af']
+                    hollow = true
+                  }
+                  return (
+                    <G key={gi}>
+                      <SvgSplitDot cx={cx} cy={dotCY} r={r} colors={splitColors} hollow={hollow} uid={`f-${fi}-${gi}`} />
+                      <Text style={{ fontSize: 5.5, fill: hollow ? '#9ca3af' : 'white', fontFamily: 'Helvetica-Bold' }}
+                        x={cx} y={dotCY + 2} textAnchor="middle">{String(pis.length)}</Text>
+                    </G>
+                  )
+                })
+              })()}
             </G>
           )
         })}

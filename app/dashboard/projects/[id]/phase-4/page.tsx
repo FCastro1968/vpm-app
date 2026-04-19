@@ -1015,10 +1015,43 @@ export default function Phase4Page() {
             <h2 className="text-base font-semibold text-gray-900 mb-1">
               Aggregated Coherence Scores
             </h2>
-            <p className="text-xs text-gray-500 mb-4">
-              Scores are computed from the geometrically aggregated matrix across all included respondents.
-              Scores below 0.10 are acceptable. Scores above 0.20 warrant review before proceeding.
-            </p>
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <p className="text-xs text-gray-500">
+                Scores are computed from the geometrically aggregated matrix across all included respondents.
+                Scores below 0.10 are acceptable. Scores above 0.20 warrant review before proceeding.
+              </p>
+              <button
+                onClick={runAiSummary}
+                disabled={aiSummaryLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 disabled:opacity-50 flex-shrink-0"
+              >
+                {aiSummaryLoading ? (
+                  <>
+                    <span className="inline-block w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                    Generating…
+                  </>
+                ) : '✦ AI Summary'}
+              </button>
+            </div>
+
+            {/* AI summary card — appears above scores */}
+            {aiSummaryError && (
+              <p className="mb-3 text-xs text-red-600">{aiSummaryError}</p>
+            )}
+            {aiSummary && (
+              <div className="mb-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-semibold text-blue-700">✦ AI Coherence Summary</span>
+                  <button
+                    onClick={() => { setAiSummary(''); setAiSummaryError('') }}
+                    className="text-xs text-blue-400 hover:text-blue-600"
+                  >
+                    Regenerate
+                  </button>
+                </div>
+                <p className="text-sm text-gray-700 leading-relaxed">{aiSummary}</p>
+              </div>
+            )}
 
             {/* Summary flag banner */}
             {hasRedFlag && (
@@ -1053,43 +1086,6 @@ export default function Phase4Page() {
                   </span>
                 </div>
               ))}
-            </div>
-
-            {/* ── AI Coherence Summary ─────────────────────────────── */}
-            <div className="mt-4">
-              {!aiSummary && (
-                <button
-                  onClick={runAiSummary}
-                  disabled={aiSummaryLoading}
-                  className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 disabled:opacity-50"
-                >
-                  {aiSummaryLoading ? (
-                    <>
-                      <span className="inline-block w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                      Generating summary…
-                    </>
-                  ) : '✦ AI Coherence Summary'}
-                </button>
-              )}
-              {aiSummaryError && (
-                <p className="mt-2 text-xs text-red-600">{aiSummaryError}</p>
-              )}
-              {aiSummary && (
-                <div className="mt-2 rounded-md border border-blue-100 bg-blue-50 px-4 py-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-blue-700 flex items-center gap-1.5">
-                      <span>✦</span> AI Coherence Summary
-                    </span>
-                    <button
-                      onClick={() => { setAiSummary(''); setAiSummaryError('') }}
-                      className="text-xs text-blue-400 hover:text-blue-600"
-                    >
-                      Regenerate
-                    </button>
-                  </div>
-                  <p className="text-sm text-gray-700 leading-relaxed">{aiSummary}</p>
-                </div>
-              )}
             </div>
           </section>
         )}

@@ -645,6 +645,7 @@ export default function Phase5Page() {
     setProceeding(true)
     try {
       await supabase.from('project').update({ status: 'MODEL_RUN' }).eq('id', projectId)
+      router.refresh()
       router.push(`/dashboard/projects/${projectId}/phase-6`)
     } catch (err: any) {
       setError(err.message ?? 'Failed to proceed')

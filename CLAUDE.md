@@ -1,7 +1,7 @@
 # Value Pricing Model™ (VPM) — Project Context
 
 ## What this is
-A commercial SaaS web application that guides SME teams through a structured, repeatable methodology for new product pricing and price repositioning. The platform digitizes a proven manual process. All 6 phases are built and working end-to-end.
+A commercial SaaS web application that guides SME teams through a structured, repeatable methodology for new product pricing and price repositioning. The platform digitizes a proven manual process. All 7 phases are built and working end-to-end.
 
 ## Core methodology (INTERNAL ONLY — never use this language in UI)
 - SMEs define factors and performance levels
@@ -85,8 +85,9 @@ npm run dev           # port 3000
 - **Phase 2:** Factor/level definition, AI suggestions, benchmark level assignments, target product level assignments, unused level detection, frameworkDirty flag (only deletes/reinserts levels if framework actually changed); assignment save always persists (both dirty and non-dirty paths); duplicate benchmark pair detection (identical level assignments across all factors = rank condition warning); AI auto-assign skips LOW confidence / unrecognized products and surfaces a yellow warning banner listing skipped products; ordinal/nominal classification per factor (`is_ordinal` boolean, default true) — clickable badge on each factor card, AI suggests classification, coverage diagnostic filters to ordinal factors only; "Brand" auto-set to nominal when typed; Save button does not run validation (only Save & Continue does)
 - **Phase 3:** Full AHP survey, 17-position slider with scale labels (9/Extreme…1/Equal), level-first ordering, save per response, `?goto=<factorId|attribute>` deep-link param for review navigation; slider label alignment uses `calc(${pct}% + ${20*(0.5-pct/100)}px)` with uniform `translateX(-50%)` to compensate for 20px thumb width at track edges
 - **Phase 4:** Per-respondent and aggregated CR computation, include/exclude toggle; "Review →" link in per-respondent expanded CR view (scoped to FACILITATED + current user email); collapsible External Respondents management panel (add/copy-link/unlock/remove distributed respondents); dedup check on add (email+project+mode query before insert — shows error if already present); submitted respondents show completion time inline (derived from `survey_started_at` and `submitted_at`); post-solve diagnostics banner; auto-heal: if status=SURVEY_OPEN but aggregated_matrix exists, restores to SURVEY_CLOSED and calls router.refresh()
-- **Phase 5:** Loads weights/utilities/assignments, calls /solve, model fit display (RMSE + NRMSE), 8-run solver table with B/M/R²/target estimates, reference product positioning, price recommendations (statistical + market envelope ranges), sensitivity analysis (always open, includes Price Delta % column), auto-rehydration on return visit, solver run override (select any of 8 runs as active, saves to DB), post-solve diagnostics (value scale coverage, market share concentration, R² reliability, factor weight concentration — all at 2.5× equal-share threshold); Market-Implied Weight Analysis (Advanced Diagnostics Tool 3) — Nelder-Mead solver finds market-implied weights, side-by-side comparison table with gap coloring scaled to equal-share weight per factor (neutral <25%, amber 25–65%, red >65% of 100/N pp), R²-based footer conclusion (material if gap >3pp); AI diagnostic explanations — background call after solver run, plain-language interpretation displayed in "Model Interpretation" section; **autoRunSolver writes results back to DB** (updates `regression_result` B/M/SSE/R² and `target_score` normalized_score/point_estimate/ranges) — prevents Phase 6 showing $0 after Phase 2 re-save wipes target_score solver fields; Respondent-Level Model Analysis (Advanced Diagnostics Tool 4) — per-respondent priority vectors + individual solver runs (parallel via Promise.all), factor weight and implied-price distributions, outlier detection (±2 SD from mean target price), side-by-side weight comparison table with consensus row and stability footer
-- **Phase 6:** Value Map with 5-dot target strip, Factor Contributions lollipop + stacked bar, Competitive Positioning Table, Price Recommendations with gap analysis; HelpTip tooltips on Value Map, Factor Contributions, and Price Recommendations headings
+- **Phase 5:** Loads weights/utilities/assignments, calls /solve, model fit display (RMSE + NRMSE), 8-run solver table with B/M/R²/target estimates, reference product positioning, price recommendations (statistical + market envelope ranges), auto-rehydration on return visit, solver run override (select any of 8 runs as active, saves to DB), post-solve diagnostics (value scale coverage, market share concentration, R² reliability, factor weight concentration — all at 2.5× equal-share threshold); AI diagnostic explanations — background call after solver run, plain-language interpretation displayed in "Model Interpretation" section; **autoRunSolver writes results back to DB** (updates `regression_result` B/M/SSE/R² and `target_score` normalized_score/point_estimate/ranges) — prevents Phase 6 showing $0 after Phase 2 re-save wipes target_score solver fields
+- **Phase 6:** Value Map with 5-dot target strip, Factor Contributions lollipop + stacked bar, Competitive Positioning Table, Price Recommendations with gap analysis; HelpTip tooltips on Value Map, Factor Contributions, and Price Recommendations headings; footer links to Phase 7
+- **Phase 7 — Sensitivity Analysis:** Four independent analysis sections each with their own Run button: (1) Benchmark Price Sensitivity — SVG tornado chart using WLS linearity insight (2 solver runs per benchmark); per-benchmark ±% range inputs; per-target color-coded bar segments; right-side low/high annotations; table sorted by influence post-run; (2) Factor Removal Sensitivity — one-factor-at-a-time exclusion with price delta; (3) Market-Implied Weight Analysis — Nelder-Mead solver finds market-implied weights, side-by-side comparison table, gap coloring scaled to equal-share weight, R²-based footer; (4) Respondent-Level Model Analysis — per-respondent priority vectors + individual solver runs, factor weight distributions, outlier detection at ±2 SD. Phase 7 unlocks at MODEL_RUN (index 6) and is non-gating (no status advancement).
 - **Dashboard:** Project list, clone project, delete project; header has initials avatar + dropdown (Settings, Sign out)
 - **Settings:** `/settings` shell with sidebar nav (Profile, Plan & Billing, Team, Notifications); Profile tab — display name (Supabase user_metadata), read-only email, password change, initials avatar; Billing tab — managed-access model, project count, capabilities list, support email; Team + Notifications tabs stubbed; active tab highlight via `SettingsNav` client component
 - **Marketing site:** Public landing page at `/` (hero, problem section, 4 output sections with screenshots, 6-phase methodology, AI Assist section, 3 persona cards, dark CTA); `/request-access` form captures name/email/company/role/volume/use-case and emails lead to admin via Resend; `proxy.ts` updated to allow `/`, `/request-access`, `/api/request-access`, `/screenshots` without auth; `.gitattributes` marks all PNG/JPG as binary
@@ -186,17 +187,35 @@ Key fix: benchmark_level_assignment has no project_id column — filter by bench
 
 ## Phase nav status / lock logic
 - Nav unlocking is status-based: `DRAFT`(0) → `SCOPE_COMPLETE`(1) → `FRAMEWORK_COMPLETE`(2) → `SURVEY_OPEN`(3) → `SURVEY_CLOSED`(4) → `UTILITIES_DERIVED`(5) → `MODEL_RUN`(6) → `COMPLETE`(7)
-- Phase N is accessible when statusIndex ≥ N-1
+- Phase N is accessible when statusIndex ≥ N-1; Phase 7 unlocks at MODEL_RUN (index 6)
 - **Never downgrade status when navigating backward** — "← Back" buttons navigate without touching status
 - `reviewInPhase3()` only sets `SURVEY_OPEN` if status ≤ `SURVEY_CLOSED`; if Phase 5 was already run, navigates without downgrading
 - Phase 4 auto-heal on load: if status=`SURVEY_OPEN` but `aggregated_matrix` rows exist → restore to `SURVEY_CLOSED` + `router.refresh()`
-- Call `router.refresh()` after any status advancement so the server-component layout re-fetches
+- Call `router.refresh()` after any status advancement or downgrade so the server-component layout re-fetches
+
+## Stale results / dependency awareness system
+`app/components/StaleWarningModal.tsx` — shared confirmation modal with "clone this project first" guidance.
+
+Three-tier dependency model. Status **only** downgrades on actual data changes, never on navigation alone:
+
+| Trigger | Clears | Status drop |
+|---|---|---|
+| Phase 1: benchmark price or share changed (status ≥ MODEL_RUN) | `regression_result`, `target_score` solver fields | `UTILITIES_DERIVED` |
+| Phase 2: factor or level added/removed (status ≥ SURVEY_OPEN) | pairwise responses, aggregated matrices, weights, utilities, solver outputs | `FRAMEWORK_COMPLETE` |
+| Phase 2: assignment-only change, no structural edit (status ≥ MODEL_RUN) | `regression_result`, `target_score` solver fields | `UTILITIES_DERIVED` |
+| Phase 3: first response edit on a completed survey (surveyStatus=closed) | aggregated matrices, weights, utilities, solver outputs | `SURVEY_OPEN` |
+| Phase 4: respondent include/exclude toggle (status ≥ UTILITIES_DERIVED) | `attribute_weight`, `level_utility`, solver outputs | `SURVEY_CLOSED` |
+
+- Phase 1 and Phase 2 save: never downgrade status on a no-change re-save (status kept if already higher than phase's natural advancement target)
+- Phase 2 uses `forceStatusDowngrade` param on `handleSave()` so stale confirm path explicitly sets the right target status
+- Phase 3 warns on first edit only per session (`staleConfirmedRef`); subsequent edits proceed without re-warning
+- Each confirm handler calls `router.refresh()` so ProjectNav dot colors and phase lock states update immediately
 
 ## Known loose ends (minor)
 - Unused `lollipopCanvasRef` declared in Phase 6 state — harmless, clean up when convenient
 - `scenario_id` filter was erroneously added to `level_utility` query — already removed; don't re-add it
 - PDF Factor Contributions chart is a basic bar chart — does not yet match Phase 6 lollipop (range bars, avg tick, hollow/solid dots, split-dot aggregation); rebuild needed using `<Svg>` primitives in `lib/pdf/VPMReport.tsx`
-- Phase 6 results are downstream of Phase 5 solver run; if Phase 2 assignments change after Phase 5 was run, Phase 5 must be re-run to update stored B/M and target scores
+- Stale detection in Phases 1–4 needs stress testing across edge cases (e.g., concurrent edits, partial benchmark changes, back-to-back stale confirms)
 - **Pending DB migrations (run both in Supabase SQL editor):**
   - `ALTER TABLE attribute ADD COLUMN IF NOT EXISTS is_ordinal boolean NOT NULL DEFAULT true;` — Phase 2 ordinal/nominal classification
   - `ALTER TABLE respondent ADD COLUMN IF NOT EXISTS survey_started_at timestamptz;` — distributed survey completion timing

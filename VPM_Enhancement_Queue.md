@@ -109,8 +109,8 @@ Priority tiers:
 
 | Pri | Item | Notes |
 |-----|------|-------|
-| 🟡 | Backward navigation with dependency awareness | Three tiers of downstream impact. Base run locked at MODEL_RUN. User warned before invalidating downstream phases. |
-| 🟡 | Save without continue — all phases | Phase 2 has this. Phases 1, 3, 4, 5 need it. Critical for Phase 1 price edits post-model. |
+| 🟡 | ✓ Stale results detection + dependency-aware status drops | DONE — `StaleWarningModal` component; three-tier system: Phase 1 price/share changes → clears solver outputs (UTILITIES_DERIVED); Phase 2 structural changes → clears survey + all downstream (FRAMEWORK_COMPLETE); Phase 2 assignment-only changes → clears solver outputs (UTILITIES_DERIVED); Phase 3 first edit on closed survey → clears Phase 4+ (SURVEY_OPEN, warns once per session); Phase 4 respondent toggle → clears solver outputs (SURVEY_CLOSED). All paths call `router.refresh()` to update nav colors. Status never downgrades on navigation alone or no-change saves. Needs stress testing across edge cases. |
+| 🟡 | Save without continue — Phases 1, 3, 5 | Phase 2 and 4 have this. Phase 1 price edits post-model are now protected by stale detection, but a Save button (no-navigate) would still improve UX for minor edits. |
 
 ---
 
@@ -193,7 +193,7 @@ Priority tiers:
 |-------|------|--------------------|
 | **Staging** | ✓ DONE | Solver on Railway (`https://vpm-app-production.up.railway.app`), Next.js on Vercel (`https://vpm-app.vercel.app`), `SOLVER_URL` env var set, Supabase redirect URLs configured, forgot-password + PKCE auth callback working |
 | **Prospect-ready** | Before any external demo | ~~Contextual tooltips~~ ✓ — remaining: demo/sample project, PDF Factor Contributions lollipop rebuild |
-| | | *Also resolved this session:* ~~Duplicate respondent prevention~~ ✓, ~~Survey completion timing~~ ✓, ~~Respondent-level analysis (Tool 4)~~ ✓, ~~autoRunSolver write-back (Phase 6 $0 fix)~~ ✓ |
+| | | *Also resolved this session:* ~~Phase 7 Sensitivity Analysis~~ ✓ (benchmark price tornado + advanced diagnostics reorganized), ~~stale results detection~~ ✓ (Phases 1–4 dependency-aware status drops + nav refresh) |
 | **Commercial launch** | Before taking payment | Stripe billing, product tier enforcement, onboarding tour — ~~settings/profile~~ ✓, ~~survey invite emails~~ ✓, ~~marketing landing page~~ ✓, ~~workspace folders~~ ✓, ~~team management~~ ✓ |
 
 ---

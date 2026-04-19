@@ -583,10 +583,14 @@ function FactorContributionsPage({ data }: { data: PDFReportData }) {
                   if (pis.length === 1) {
                     const p = allProducts[pis[0]]
                     return (
-                      <Circle key={gi} cx={cx} cy={dotCY} r={r}
-                        fill={p.isTarget ? p.color : 'white'}
-                        stroke={p.color} strokeWidth={1.4}
-                      />
+                      <G key={gi}>
+                        {/* White halo lifts dot off the gray range bar */}
+                        <Circle cx={cx} cy={dotCY} r={r + 1.5} fill="white" />
+                        <Circle cx={cx} cy={dotCY} r={r}
+                          fill={p.isTarget ? p.color : 'white'}
+                          stroke={p.color} strokeWidth={1.4}
+                        />
+                      </G>
                     )
                   }
                   const targetPis = pis.filter(pi => allProducts[pi].isTarget)
@@ -600,8 +604,9 @@ function FactorContributionsPage({ data }: { data: PDFReportData }) {
                   }
                   return (
                     <G key={gi}>
+                      <Circle cx={cx} cy={dotCY} r={r + 1.5} fill="white" />
                       <SvgSplitDot cx={cx} cy={dotCY} r={r} colors={splitColors} hollow={hollow} uid={`f-${fi}-${gi}`} />
-                      <Text style={{ fontSize: 5.5, fill: hollow ? '#9ca3af' : 'white', fontFamily: 'Helvetica-Bold' }}
+                      <Text style={{ fontSize: 5.5, fill: hollow ? '#6b7280' : 'white', fontFamily: 'Helvetica-Bold' }}
                         x={cx} y={dotCY + 2} textAnchor="middle">{String(pis.length)}</Text>
                     </G>
                   )
@@ -647,10 +652,13 @@ function FactorContributionsPage({ data }: { data: PDFReportData }) {
                   if (pis.length === 1) {
                     const p = allProducts[pis[0]]
                     return (
-                      <Circle key={gi} cx={cx} cy={dotCY} r={r}
-                        fill={p.isTarget ? p.color : 'white'}
-                        stroke={p.color} strokeWidth={1.4}
-                      />
+                      <G key={gi}>
+                        <Circle cx={cx} cy={dotCY} r={r + 1.5} fill="white" />
+                        <Circle cx={cx} cy={dotCY} r={r}
+                          fill={p.isTarget ? p.color : 'white'}
+                          stroke={p.color} strokeWidth={1.4}
+                        />
+                      </G>
                     )
                   }
                   // Multiple products — determine split colors (targets take priority)
@@ -665,9 +673,10 @@ function FactorContributionsPage({ data }: { data: PDFReportData }) {
                   }
                   return (
                     <G key={gi}>
+                      <Circle cx={cx} cy={dotCY} r={r + 1.5} fill="white" />
                       <SvgSplitDot cx={cx} cy={dotCY} r={r} colors={splitColors} hollow={hollow} uid={`t-${gi}`} />
                       {/* Count badge */}
-                      <Text style={{ fontSize: 5.5, fill: hollow ? '#9ca3af' : 'white', fontFamily: 'Helvetica-Bold' }}
+                      <Text style={{ fontSize: 5.5, fill: hollow ? '#6b7280' : 'white', fontFamily: 'Helvetica-Bold' }}
                         x={cx} y={dotCY + 2} textAnchor="middle">{String(pis.length)}</Text>
                     </G>
                   )

@@ -584,7 +584,9 @@ export default function Phase3Page() {
     )
   }
 
-  if (surveyStatus === 'closed') {
+  // When arriving via Review → from Phase 4 with a ?goto= param, bypass the
+  // closed screen and show the question navigator directly at the target question.
+  if (surveyStatus === 'closed' && !gotoParam) {
     return (
       <div className="w-full max-w-2xl mx-auto">
         <div className="mb-6">

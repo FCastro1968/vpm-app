@@ -865,6 +865,57 @@ function SensitivityPage({ data }: { data: PDFReportData }) {
         How the price recommendation shifts when each reference product's price varies ±10%, holding all others constant. Wider bars indicate higher influence.
       </Text>
 
+      {/* ── Summary table ── */}
+      <View style={{ marginBottom: 14 }}>
+        {/* Header row */}
+        <View style={{ flexDirection: 'row', borderBottomWidth: 1.5, borderBottomColor: DARK, paddingBottom: 4, marginBottom: 2 }}>
+          <Text style={{ fontSize: 8, color: GRAY, fontFamily: 'Helvetica-Bold', flex: 2.2 }}>Reference Product</Text>
+          <Text style={{ fontSize: 8, color: GRAY, fontFamily: 'Helvetica-Bold', flex: 1, textAlign: 'right' }}>Base Price</Text>
+          <Text style={{ fontSize: 8, color: GRAY, fontFamily: 'Helvetica-Bold', flex: 0.7, textAlign: 'center' }}>± %</Text>
+          {targets.map((t, ti) => (
+            <View key={t.id} style={{ flex: 1.6, alignItems: 'center' }}>
+              <Text style={{ fontSize: 7.5, color: TARGET_COLORS[ti] ?? GRAY, fontFamily: 'Helvetica-Bold', textAlign: 'center' }}>
+                {t.name.length > 18 ? t.name.slice(0, 17) + '…' : t.name}
+              </Text>
+              <Text style={{ fontSize: 6.5, color: GRAY, textAlign: 'center' }}>
+                base: {'$' + Math.round(t.point_estimate).toLocaleString()}
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 4 }}>
+                <Text style={{ fontSize: 6.5, color: GRAY, flex: 1, textAlign: 'center' }}>Low</Text>
+                <Text style={{ fontSize: 6.5, color: GRAY, flex: 1, textAlign: 'center' }}>High</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+        {/* Data rows */}
+        {rows.map((row, ri) => (
+          <View key={row.benchId} style={{
+            flexDirection: 'row', paddingVertical: 5,
+            backgroundColor: ri % 2 === 0 ? '#f9fafb' : '#ffffff',
+            borderBottomWidth: 1, borderBottomColor: '#f3f4f6',
+            alignItems: 'center',
+          }}>
+            <Text style={{ fontSize: 8, color: DARK, flex: 2.2 }}>
+              {row.benchName.length > 30 ? row.benchName.slice(0, 29) + '…' : row.benchName}
+            </Text>
+            <Text style={{ fontSize: 8, color: DARK, flex: 1, textAlign: 'right' }}>
+              {'$' + Math.round(row.basePrice).toLocaleString()}
+            </Text>
+            <Text style={{ fontSize: 8, color: GRAY, flex: 0.7, textAlign: 'center' }}>±{row.rangePct}%</Text>
+            {targets.map((t, ti) => (
+              <View key={t.id} style={{ flex: 1.6, flexDirection: 'row' }}>
+                <Text style={{ fontSize: 8, color: TARGET_COLORS[ti] ?? GRAY, flex: 1, textAlign: 'center' }}>
+                  {'$' + Math.round(row.lowPrices[ti] ?? 0).toLocaleString()}
+                </Text>
+                <Text style={{ fontSize: 8, color: TARGET_COLORS[ti] ?? GRAY, flex: 1, textAlign: 'center' }}>
+                  {'$' + Math.round(row.highPrices[ti] ?? 0).toLocaleString()}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ))}
+      </View>
+
       <Svg width={W} height={H}>
 
         {/* Legend: target color dots + names */}

@@ -918,15 +918,6 @@ const [categoryAnchor,     setCategoryAnchor]     = useState('')
             Model results, competitive positioning, and price recommendations.
           </p>
         </div>
-        <button
-          onClick={() => router.push(`/dashboard/projects/${projectId}/phase-7`)}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 whitespace-nowrap"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
-          </svg>
-          Export PDF →
-        </button>
       </div>
 
       <div className="space-y-8">

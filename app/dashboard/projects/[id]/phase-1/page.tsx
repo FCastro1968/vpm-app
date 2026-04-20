@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useParams } from 'next/navigation'
 import { StaleWarningModal } from '@/app/components/StaleWarningModal'
+import { HelpTip } from '@/app/components/HelpTip'
 
 const STATUS_ORDER = ['DRAFT','SCOPE_COMPLETE','FRAMEWORK_COMPLETE','SURVEY_OPEN','SURVEY_CLOSED','UTILITIES_DERIVED','MODEL_RUN','COMPLETE']
 function statusIndex(s: string) { return STATUS_ORDER.indexOf(s) }
@@ -404,10 +405,13 @@ export default function Phase1Page() {
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Target Segment
-                <span className="ml-1 font-normal text-gray-400">optional</span>
-              </label>
+              <div className="flex items-center gap-1.5 mb-1">
+                <label className="text-xs font-medium text-gray-700">
+                  Target Segment
+                  <span className="ml-1 font-normal text-gray-400">optional</span>
+                </label>
+                <HelpTip content="The customer segment your target product is aimed at. Used by the AI when generating the positioning narrative in the output phase — helps tailor the language to your actual buyer." />
+              </div>
               <input
                 type="text"
                 value={targetSegment}
@@ -421,7 +425,10 @@ export default function Phase1Page() {
 
         {/* Benchmark Price Basis */}
         <section className="bg-white rounded-lg shadow border border-gray-300 p-4">
-          <h2 className="text-sm font-semibold text-gray-900 mb-0.5">Benchmark Price Basis</h2>
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <h2 className="text-sm font-semibold text-gray-900">Benchmark Price Basis</h2>
+            <HelpTip content="Choose the price type you'll use consistently across all reference products. List Price works well for B2B where published prices exist. Average Market Price is better when discounting is common and you know what buyers actually pay. Whatever you choose, the model assumes all prices reflect the same basis — mixing types will distort the output." />
+          </div>
           <p className="text-xs text-gray-500 mb-3">
             Declare the price type before entering prices. Must be consistent across all reference products.
           </p>
@@ -535,7 +542,10 @@ export default function Phase1Page() {
 
         {/* Category Anchor + AI Assist */}
         <section className="bg-white rounded-lg shadow border border-gray-300 p-4">
-          <h2 className="text-sm font-semibold text-gray-900 mb-0.5">Category Anchor</h2>
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <h2 className="text-sm font-semibold text-gray-900">Category Anchor</h2>
+            <HelpTip content="A plain-language description of a typical product in your competitive space. The AI uses this to suggest relevant reference products — it doesn't appear in your output. The more specific you are (price range, buyer type, key features, competing brands), the more targeted the suggestions." />
+          </div>
           <p className="text-xs text-gray-500 mb-3">
             Describe a representative product in your category. Used to generate a suggested market reference set.
             {targets[0]?.name && targets[0].use_case_type === 'REPOSITION' && (
@@ -572,7 +582,10 @@ export default function Phase1Page() {
         {/* Market Reference Set */}
         <section className="bg-white rounded-lg shadow border border-gray-300 p-4">
           <div className="flex items-center justify-between mb-1">
-            <h2 className="text-sm font-semibold text-gray-900">Market Reference Set</h2>
+            <div className="flex items-center gap-1.5">
+              <h2 className="text-sm font-semibold text-gray-900">Market Reference Set</h2>
+              <HelpTip content="These are the products the model calibrates against. Aim for 4–8 well-known competitors that span your price range. Market share is used as a weighting factor — products with higher share have more influence on the fitted line. SME estimates are fine; they don't need to sum to 100%." />
+            </div>
             <button onClick={addBenchmark} className="text-xs text-blue-600 hover:text-blue-700 font-medium">
               + Add manually
             </button>

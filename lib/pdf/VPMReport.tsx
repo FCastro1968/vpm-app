@@ -1057,11 +1057,6 @@ function FactorSensitivityPage({ data }: { data: PDFReportData }) {
     Math.abs(b.deltaFromFull ?? 0) - Math.abs(a.deltaFromFull ?? 0)
   )
 
-  // Delta bar scale — max |delta| across rows
-  const maxDelta = Math.max(...rows.map(r => Math.abs(r.deltaFromFull ?? 0)), 1)
-
-  const BAR_MAX_W = 80
-
   return (
     <PageShell projectName={data.projectName} section="Factor Removal Sensitivity">
       <Text style={s.sectionTitle}>Factor Removal Sensitivity</Text>
@@ -1080,16 +1075,40 @@ function FactorSensitivityPage({ data }: { data: PDFReportData }) {
         <Text style={{ fontSize: 8, color: GRAY, fontFamily: 'Helvetica-Bold', flex: 0.9, textAlign: 'right' }}>R² Δ</Text>
         <Text style={{ fontSize: 8, color: GRAY, fontFamily: 'Helvetica-Bold', flex: 1.1, textAlign: 'right' }}>Price excl.</Text>
         <Text style={{ fontSize: 8, color: GRAY, fontFamily: 'Helvetica-Bold', flex: 1.1, textAlign: 'right' }}>Price Δ</Text>
-        <Text style={{ fontSize: 8, color: GRAY, fontFamily: 'Helvetica-Bold', flex: 1.8, textAlign: 'center' }}>Relative Impact</Text>
+        <Text style={{ fontSize: 8, color: GRAY, fontFamily: 'Helvetica-Bold', flex: 2.5 }}>Signal</Text>
       </View>
 
       {rows.map((row, i) => {
         const r2Excl  = row.rSquaredExcluded
         const r2Delta = r2Excl != null ? r2Excl - fullR2 : null
         const delta   = row.deltaFromFull ?? 0
-        const barW    = (Math.abs(delta) / maxDelta) * BAR_MAX_W
-        const barColor = delta > 0 ? '#2563eb' : '#dc2626'
-        const r2Color  = r2Delta == null ? GRAY : r2Delta > 0.02 ? '#b45309' : r2Delta < -0.05 ? '#2563eb' : DARK
+        const r2Color = r2Delta == null ? GRAY : r2Delta > 0.02 ? '#b45309' : r2Delta < -0.05 ? '#1d4ed8' : DARK
+
+        const r2DeltaAbs   = Math.abs(r2Delta ?? 0)
+        const r2Improves   = r2Delta != null && r2Delta > 0.03
+        const r2Drops      = r2Delta != null && r2Delta < -0.05
+        const r2DropsLarge = r2Delta != null && r2Delta < -0.08
+        const avgPrice     = data.benchmarks.reduce((s, b) => s + b.market_price, 0) / (data.benchmarks.length || 1)
+        const priceDeltaPct = avgPrice > 0 ? Math.abs(delta) / avgPrice : 0
+        const priceImpactLg = priceDeltaPct > 0.05
+        const priceImpactSm = priceDeltaPct < 0.015
+        const r2Stable     = r2DeltaAbs < 0.025
+
+        let signal = ''
+        let signalColor = GRAY
+        if (r2Improves) {
+          signal = 'Worth reviewing — market may not price this factor as SMEs indicated'
+          signalColor = '#b45309'
+        } else if (r2DropsLarge || (r2Drops && priceImpactLg) || (priceImpactLg && r2Stable)) {
+          if (r2DropsLarge && priceImpactLg)  signal = 'Load-bearing — strongly influences both fit and recommendation'
+          else if (r2DropsLarge)              signal = 'Load-bearing — removing significantly weakens model fit'
+          else if (priceImpactLg && r2Stable) signal = 'Drives recommendation — high value influence with stable fit'
+          else                               signal = 'Load-bearing — influences fit and recommendation'
+          signalColor = '#1d4ed8'
+        } else if (priceImpactSm && r2Stable) {
+          signal = 'Low influence — candidate for exclusion from this model run'
+          signalColor = '#9ca3af'
+        }
 
         return (
           <View key={row.factorId} style={{
@@ -1101,7 +1120,6 @@ function FactorSensitivityPage({ data }: { data: PDFReportData }) {
               <Text style={{ fontSize: 8, color: DARK }}>
                 {row.factorName.length > 26 ? row.factorName.slice(0, 25) + '…' : row.factorName}
               </Text>
-              {row.flagged && <Text style={{ fontSize: 6.5, color: '#b45309', fontFamily: 'Helvetica-Bold' }}>⚑</Text>}
             </View>
             <Text style={{ fontSize: 8, color: GRAY, flex: 0.7, textAlign: 'center' }}>
               {(row.weight * 100).toFixed(0)}%
@@ -1115,32 +1133,18 @@ function FactorSensitivityPage({ data }: { data: PDFReportData }) {
             <Text style={{ fontSize: 8, color: DARK, flex: 1.1, textAlign: 'right' }}>
               {row.pointEstimate != null ? fmt(row.pointEstimate) : '—'}
             </Text>
-            <Text style={{ fontSize: 8, color: delta !== 0 ? barColor : GRAY, flex: 1.1, textAlign: 'right', fontFamily: 'Helvetica-Bold' }}>
+            <Text style={{ fontSize: 8, color: delta !== 0 ? (delta > 0 ? '#1d4ed8' : '#dc2626') : GRAY, flex: 1.1, textAlign: 'right', fontFamily: 'Helvetica-Bold' }}>
               {delta !== 0 ? (delta > 0 ? '+' : '') + fmt(delta) : '—'}
             </Text>
-            {/* Delta bar — centered on midpoint, extends left (neg) or right (pos) */}
-            <View style={{ flex: 1.8, alignItems: 'center', justifyContent: 'center' }}>
-              <View style={{ width: BAR_MAX_W * 2, height: 8, position: 'relative', flexDirection: 'row', alignItems: 'center' }}>
-                {/* Center line */}
-                <View style={{ position: 'absolute', left: BAR_MAX_W - 0.5, top: 0, width: 1, height: 8, backgroundColor: '#d1d5db' }} />
-                {/* Bar */}
-                {barW > 0 && (
-                  <View style={{
-                    position: 'absolute',
-                    left: delta >= 0 ? BAR_MAX_W : BAR_MAX_W - barW,
-                    top: 1, width: barW, height: 6,
-                    backgroundColor: barColor,
-                    borderRadius: 1,
-                  }} />
-                )}
-              </View>
-            </View>
+            <Text style={{ fontSize: 7, color: signalColor, flex: 2.5 }}>
+              {signal || '—'}
+            </Text>
           </View>
         )
       })}
 
       <Text style={{ fontSize: 7, color: GRAY, marginTop: 10 }}>
-        ⚑ Flagged: price delta exceeds 5% of full model estimate. R² Δ: amber = improves when excluded (factor may not align with market); blue = drops significantly (load-bearing factor).
+        R² Δ: amber = improves when excluded (factor may not align with market pricing); blue = drops significantly (load-bearing factor).
       </Text>
     </PageShell>
   )

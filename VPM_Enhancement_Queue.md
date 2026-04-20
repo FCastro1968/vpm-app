@@ -14,7 +14,7 @@ Priority tiers:
 | Pri | Item | Notes |
 |-----|------|-------|
 | 🔴 | Demo / sample project | Pre-loaded read-only project for new accounts (e.g., a CO2 incubator or similar). Lets a prospect experience the full output — Value Map, lollipop, PDF — before building anything. Critical for self-serve sales. |
-| 🔴 | ✓ Contextual help tooltips | DONE — HelpTip component (click-to-open popover, outside-click-to-close). Phase 2: factor name, performance levels ordering, ordinal/nominal badge, coverage score. Phase 3: context-aware comparison prompt (attribute vs level). Phase 5: Weighted R², Benchmark Outlier Review, Sensitivity Analysis. Phase 6: Value Map 5-dot strip, Factor Contributions lollipop, Price Recommendations ranges. |
+| 🔴 | Contextual help tooltips | HelpTip component done (click-to-open popover, outside-click-to-close). **Done:** Phase 1 (Price Basis, Category Anchor, Market Reference Set, Target Segment), Phase 4 (Respondents include/exclude, Aggregated Coherence Scores), Phase 6 (Value Map, Factor Contributions, Price Recommendations), Phase 7 (all 4 analysis sections). **Remaining:** Phase 2 (factor name, ordinal/nominal badge, coverage score), Phase 3 (comparison prompt), Phase 5 (model fit, diagnostics, price ranges). |
 | 🟡 | In-app guided tour | First-time-user walkthrough (coach marks) covering Phase 1 → 2 → 3 → 5 → 6. Dismissible, re-triggerable from Help menu. |
 
 ---
@@ -93,8 +93,8 @@ Priority tiers:
 
 | Pri | Item | Notes |
 |-----|------|-------|
-| 🔴 | Executive summary PDF export | Value Map, Factor Contributions, Positioning Table, Price Recommendation, optional AI narrative. PDF route generating end-to-end; cover page (incl. Target Segment), price recs, and positioning table are solid. Factor Contributions chart and dollar-scale header in place but chart itself still needs lollipop rebuild. |
-| 🔴 | PDF Factor Contributions chart — rebuild to match Phase 6 | Current PDF renders a basic horizontal bar chart. Need faithful SVG/react-pdf recreation using `<Svg>` primitives: gray range bar per factor, avg tick, dot per product (hollow=ref, solid=target, amber/blue palette), split-dot for collisions, total row with divider and model-implied price scale. Dollar-scale tick header is already implemented. |
+| 🔴 | Executive summary PDF export | PDF route end-to-end via Phase 7 Export button (POST with pre-computed sensitivity). Pages: cover, model params, benchmarks, targets, factor contributions, Reference Product Price Sensitivity tornado, Factor Sensitivity with Signal column. Factor Contributions chart: split-dot + count badges + white halo + z-order priority done. Still missing: range bars, avg tick, hollow/solid dot distinction. |
+| 🔴 | PDF Factor Contributions chart — complete lollipop rebuild | Split-dot aggregation + count badges + white halo + z-order done. Remaining: gray range bar per factor, avg tick, hollow ref dots vs solid target dots. Use `<Svg>` primitives in `lib/pdf/VPMReport.tsx`. |
 | 🟡 | ✓ AI narrative summary | DONE — `generate_narrative` task in `/api/ai/route.ts`; "Positioning Narrative" section above Value Map with "✦ Generate Narrative" button, copy-to-clipboard, regenerate action. 4–6 sentence executive-level summary. Feeds into future PDF/PPTX exports. |
 | 🟡 | XLSX raw data export | Pairwise matrices, weights, utilities, benchmark scores, solver results, sensitivity. |
 | 🟡 | ✓ Value Map interpretation tools | DONE — quadrant shading (soft red = overpriced above diagonal, soft blue = underpriced below), toggleable product name labels ("Labels" button) with connector lines for displaced labels. |
@@ -145,8 +145,8 @@ Priority tiers:
 
 | Pri | Item | Notes |
 |-----|------|-------|
-| 🟡 | Phase 4: Coherence guidance | Explain score + suggest which comparisons to review. |
-| 🟡 | Phase 6: Narrative summary | Draft positioning narrative for export. |
+| 🟡 | ✓ Phase 4: Coherence guidance | DONE — `explain_coherence` task; HelpTip on Coherence Score + include/exclude toggle added. |
+| 🟡 | ✓ Phase 6: Narrative summary | DONE — `generate_narrative` task; "Positioning Narrative" section with copy + regenerate. |
 
 ---
 
@@ -192,8 +192,8 @@ Priority tiers:
 | Stage | Gate | Key remaining work |
 |-------|------|--------------------|
 | **Staging** | ✓ DONE | Solver on Railway (`https://vpm-app-production.up.railway.app`), Next.js on Vercel (`https://vpm-app.vercel.app`), `SOLVER_URL` env var set, Supabase redirect URLs configured, forgot-password + PKCE auth callback working |
-| **Prospect-ready** | Before any external demo | ~~Contextual tooltips~~ ✓ — remaining: demo/sample project, PDF Factor Contributions lollipop rebuild |
-| | | *Also resolved this session:* ~~Phase 7 Sensitivity Analysis~~ ✓ (benchmark price tornado + advanced diagnostics reorganized), ~~stale results detection~~ ✓ (Phases 1–4 dependency-aware status drops + nav refresh) |
+| **Prospect-ready** | Before any external demo | Remaining: demo/sample project, PDF Factor Contributions lollipop rebuild (range bars + hollow/solid dots), HelpTips for Phases 2, 3, 5 |
+| | | *Resolved:* ~~tooltips (Phase 1, 4, 6, 7)~~ ✓, ~~PDF from Phase 7 with sensitivity pages~~ ✓, ~~Phase 7 all 4 analysis sections~~ ✓, ~~stale results detection~~ ✓, ~~clone is_ordinal fix~~ ✓ |
 | **Commercial launch** | Before taking payment | Stripe billing, product tier enforcement, onboarding tour — ~~settings/profile~~ ✓, ~~survey invite emails~~ ✓, ~~marketing landing page~~ ✓, ~~workspace folders~~ ✓, ~~team management~~ ✓ |
 
 ---

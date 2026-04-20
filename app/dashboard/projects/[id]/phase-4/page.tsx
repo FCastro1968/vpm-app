@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useParams } from 'next/navigation'
 import { StaleWarningModal } from '@/app/components/StaleWarningModal'
+import { HelpTip } from '@/app/components/HelpTip'
 
 const STATUS_ORDER = ['DRAFT','SCOPE_COMPLETE','FRAMEWORK_COMPLETE','SURVEY_OPEN','SURVEY_CLOSED','UTILITIES_DERIVED','MODEL_RUN','COMPLETE']
 
@@ -866,7 +867,10 @@ export default function Phase4Page() {
 
         {/* ── Respondent roster ─────────────────────────────────────────── */}
         <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-base font-semibold text-gray-900 mb-1">Respondents</h2>
+          <div className="flex items-center gap-1.5 mb-1">
+            <h2 className="text-base font-semibold text-gray-900">Respondents</h2>
+            <HelpTip content="Use the toggle to include or exclude individual respondents before running the analysis. Excluded respondents are kept on record but their survey responses are removed from the group aggregation — weights and performance scores are recomputed using only the included set. This is useful when a respondent's answers are clearly outliers or they weren't sufficiently familiar with the product category." width="w-80" />
+          </div>
           <p className="text-xs text-gray-500 mb-4">
             Include or exclude respondents before running the analysis. Excluded respondents are kept in the record but not used in aggregation.
           </p>
@@ -1052,9 +1056,10 @@ export default function Phase4Page() {
         {/* ── Aggregated coherence scores ────────────────────────────────── */}
         {aggregatedResults.length > 0 && (
           <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-base font-semibold text-gray-900 mb-1">
-              Aggregated Coherence Scores
-            </h2>
+            <div className="flex items-center gap-1.5 mb-1">
+              <h2 className="text-base font-semibold text-gray-900">Aggregated Coherence Scores</h2>
+              <HelpTip content="A Coherence Score measures how logically consistent a respondent's paired comparisons are — for example, if A is rated more important than B, and B more important than C, then A should outrank C. Scores below 0.10 are considered acceptable. Between 0.10 and 0.20 is marginal — the model can still run but results may be less reliable. Above 0.20 means the comparisons are too contradictory to trust; consider reviewing the survey with that respondent or excluding them." width="w-96" />
+            </div>
             <div className="flex items-start justify-between gap-4 mb-4">
               <p className="text-xs text-gray-500">
                 Scores are computed from the geometrically aggregated matrix across all included respondents.

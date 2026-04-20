@@ -3,6 +3,7 @@
 import { useState, useEffect, Fragment } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useParams } from 'next/navigation'
+import { HelpTip } from '@/app/components/HelpTip'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -697,7 +698,10 @@ export default function Phase7Page() {
         <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-start justify-between mb-1">
             <div>
-              <h2 className="text-base font-semibold text-gray-900">Reference Product Price Sensitivity</h2>
+              <div className="flex items-center gap-1.5">
+                <h2 className="text-base font-semibold text-gray-900">Reference Product Price Sensitivity</h2>
+                <HelpTip content="This shows how much your target price recommendation moves when a reference product's price turns out to be wrong — for example if its list price is different from what buyers actually pay. Each bar represents one reference product: wider means it has more influence over your recommendation. Use this to identify which market prices you should verify most carefully before locking in a pricing decision." width="w-96" />
+              </div>
               <p className="text-xs text-gray-500 mt-0.5">
                 Shows how the price recommendation shifts when each reference product's price varies through its uncertainty range, holding all others constant. Wider bars indicate higher influence on the recommendation.
               </p>
@@ -825,7 +829,10 @@ export default function Phase7Page() {
         <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-start justify-between mb-1">
             <div>
-              <h2 className="text-base font-semibold text-gray-900">Factor Sensitivity Analysis</h2>
+              <div className="flex items-center gap-1.5">
+                <h2 className="text-base font-semibold text-gray-900">Factor Sensitivity Analysis</h2>
+                <HelpTip content="Removes each factor one at a time and re-runs the model to see what changes. A large price shift means your recommendation is heavily dependent on that factor — worth double-checking the performance scores and importance weight you assigned it. The Signal column flags factors where the market data tells a different story from your team's survey: if removing a factor improves model fit, the market may not price that dimension the way your team weighted it." width="w-96" />
+              </div>
               <p className="text-xs text-gray-500 mt-0.5">
                 Shows how the recommended price changes when each factor is removed from the model one at a time. A large price delta means the model is heavily dependent on that factor.
               </p>
@@ -938,7 +945,10 @@ export default function Phase7Page() {
             <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="flex items-start justify-between mb-1">
                 <div>
-                  <h2 className="text-base font-semibold text-gray-900">Market-Implied Weight Analysis</h2>
+                  <div className="flex items-center gap-1.5">
+                    <h2 className="text-base font-semibold text-gray-900">Market-Implied Weight Analysis</h2>
+                    <HelpTip content="Asks a different question: what factor weights would best explain the prices already in the market, ignoring your team's survey entirely? If the market-implied weights look very different from your survey weights, it means buyers may not value factors the same way your team does — or that the market prices don't fully reflect value differences on those dimensions. A large improvement in model fit when using market-implied weights is a signal worth investigating before finalizing your pricing." width="w-96" />
+                  </div>
                   <p className="text-xs text-gray-500 mt-0.5">
                     Compares survey-derived Importance Scores against weights that best fit observed market prices — revealing where the market agrees or disagrees with your team's assessments.
                   </p>
@@ -1040,7 +1050,10 @@ export default function Phase7Page() {
         <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-start justify-between mb-1">
             <div>
-              <h2 className="text-base font-semibold text-gray-900">Respondent-Level Model Analysis</h2>
+              <div className="flex items-center gap-1.5">
+                <h2 className="text-base font-semibold text-gray-900">Respondent-Level Model Analysis</h2>
+                <HelpTip content="Runs the pricing model separately using each respondent's weights alone, then compares the results. If all respondents produce similar price recommendations, the consensus is robust. If one respondent produces a very different result (flagged as an outlier), their survey influenced the group aggregation significantly — you may want to revisit whether to include them. This doesn't change the model; it's a diagnostic to understand how much your result depends on any single voice." width="w-96" />
+              </div>
               <p className="text-xs text-gray-500 mt-0.5">
                 Runs the model independently for each respondent — shows how much the consensus is driven by agreement vs. one or two dominant voices.
               </p>

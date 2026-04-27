@@ -889,7 +889,7 @@ export default function Phase2Page() {
                 <HelpTip content="Factors are the dimensions buyers weigh when choosing between products — things like performance, reliability, support, or brand. Each factor gets importance-weighted through the preference survey and then drives the value score for every product. Good factors are observable, meaningful to buyers, and distinct from each other. Avoid factors that overlap heavily or that buyers can't actually evaluate." width="w-96" />
               </div>
               <p className="text-xs text-gray-500 mt-0.5">
-                Define the purchase-decision dimensions. Recommended: 6–12 factors.
+                Define the purchase-decision dimensions. Recommended: 8–12 factors.
               </p>
             </div>
             <div className="flex items-center gap-3">

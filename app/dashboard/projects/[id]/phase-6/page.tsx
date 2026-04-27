@@ -34,7 +34,7 @@ interface Benchmark {
   value_index: number
   model_price: number
   residual: number
-  factor_contributions: { factor_id: string; name: string; contribution: number }[]
+  factor_contributions: { factor_id: string; name: string; contribution: number; level_name: string }[]
 }
 
 interface TargetResult {
@@ -46,7 +46,7 @@ interface TargetResult {
   point_estimate: number
   range_low: number
   range_high: number
-  factor_contributions: { factor_id: string; name: string; contribution: number }[]
+  factor_contributions: { factor_id: string; name: string; contribution: number; level_name: string }[]
 }
 
 interface ModelParams {
@@ -357,37 +357,35 @@ function FactorLollipop({ allProducts, factorsOrdered, factorsBase, priceRange, 
               const dev = val - avg
               const rank = [...vals].sort((a: number, b: number) => b - a).indexOf(val) + 1
               const pct = totals[pi] > 0 ? Math.round(val / totals[pi] * 100) : 0
+              const levelName = prod.contributions.find((c: any) => c.factor_id === factor.id)?.level_name ?? ''
               tt.innerHTML = `
                 <div style="font-weight:500;color:#111;margin-bottom:3px;">${prod.fullName}${prod.isTarget ? ' ★' : ''}</div>
-                <div style="color:#6b7280;font-size:11px;margin-bottom:6px;">${factor.name}</div>
+                <div style="color:#6b7280;font-size:11px;margin-bottom:${levelName ? '1px' : '6px'};">${factor.name}</div>
+                ${levelName ? `<div style="color:#374151;font-size:11px;font-weight:500;margin-bottom:6px;">${levelName}</div>` : ''}
                 <div style="font-size:14px;font-weight:500;color:#111;">$${Math.round(val).toLocaleString()}</div>
                 <div style="color:#9ca3af;font-size:11px;margin-top:3px;">${dev >= 0 ? '+' : '-'}$${Math.round(Math.abs(dev)).toLocaleString()} vs avg · rank #${rank}</div>
                 <div style="color:#9ca3af;font-size:11px;">${pct}% of differentiated value</div>
               `
             } else {
               const val = vals[pi]
-              const rows = pis.map((p: number) => {
-                const prod = allProducts[p]
-                const color = getColor(prod, p)
-                return `<div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
-                  <span style="width:8px;height:8px;border-radius:50%;background:${prod.isTarget ? color : 'transparent'};border:1.5px solid ${color};flex-shrink:0;"></span>
-                  <span style="color:#374151;">${prod.fullName}${prod.isTarget ? ' ★' : ''}</span>
-                </div>`
-              }).join('')
               const dev = val - avg
               const rank = [...vals].sort((a: number, b: number) => b - a).indexOf(val) + 1
+              const levelNames = pis.map((p: number) => allProducts[p].contributions.find((c: any) => c.factor_id === factor.id)?.level_name ?? '')
+              const sharedLevel = levelNames.every((l: string) => l === levelNames[0]) ? levelNames[0] : ''
               const rowsWithPct = pis.map((p: number) => {
                 const prod = allProducts[p]
                 const color = getColor(prod, p)
                 const pct = totals[p] > 0 ? Math.round(val / totals[p] * 100) : 0
+                const prodLevel = sharedLevel ? '' : (prod.contributions.find((c: any) => c.factor_id === factor.id)?.level_name ?? '')
                 return `<div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
                   <span style="width:8px;height:8px;border-radius:50%;background:${prod.isTarget ? color : 'transparent'};border:1.5px solid ${color};flex-shrink:0;"></span>
-                  <span style="color:#374151;">${prod.fullName}${prod.isTarget ? ' ★' : ''}</span>
+                  <span style="color:#374151;">${prod.fullName}${prod.isTarget ? ' ★' : ''}${prodLevel ? ` <span style="color:#9ca3af;">(${prodLevel})</span>` : ''}</span>
                   <span style="margin-left:auto;color:#9ca3af;font-size:10px;">${pct}% of diff. value</span>
                 </div>`
               }).join('')
               tt.innerHTML = `
-                <div style="color:#6b7280;font-size:11px;margin-bottom:3px;">${factor.name}</div>
+                <div style="color:#6b7280;font-size:11px;margin-bottom:${sharedLevel ? '1px' : '3px'};">${factor.name}</div>
+                ${sharedLevel ? `<div style="color:#374151;font-size:11px;font-weight:500;margin-bottom:3px;">${sharedLevel}</div>` : ''}
                 <div style="font-size:14px;font-weight:500;color:#111;">$${Math.round(val).toLocaleString()}</div>
                 <div style="color:#9ca3af;font-size:11px;margin-top:1px;margin-bottom:5px;padding-bottom:5px;border-bottom:1px solid #f3f4f6;">${dev >= 0 ? '+' : '-'}$${Math.round(Math.abs(dev)).toLocaleString()} vs avg · rank #${rank} · ${pis.length} products</div>
                 ${rowsWithPct}
@@ -612,7 +610,7 @@ const [categoryAnchor,     setCategoryAnchor]     = useState('')
           const maxUtil = factorLevels.length ? Math.max(...factorLevels.map(l => l.utility)) : 1
           const utilRange = maxUtil - minUtil
           const scaledUtil = utilRange > 0 ? ((level?.utility ?? 0) - minUtil) / utilRange : 0
-          return { factor_id: f.id, name: f.name, contribution: f.weight * scaledUtil }
+          return { factor_id: f.id, name: f.name, contribution: f.weight * scaledUtil, level_name: level?.name ?? '' }
         })
         return {
           ...bm,
@@ -652,7 +650,7 @@ const [categoryAnchor,     setCategoryAnchor]     = useState('')
           const maxUtil = factorLevels.length ? Math.max(...factorLevels.map(l => l.utility)) : 1
           const utilRange = maxUtil - minUtil
           const scaledUtil = utilRange > 0 ? ((level?.utility ?? 0) - minUtil) / utilRange : 0
-          return { factor_id: f.id, name: f.name, contribution: f.weight * scaledUtil }
+          return { factor_id: f.id, name: f.name, contribution: f.weight * scaledUtil, level_name: level?.name ?? '' }
         })
 
         return {

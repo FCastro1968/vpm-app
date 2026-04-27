@@ -584,7 +584,7 @@ export default function Phase1Page() {
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-1.5">
               <h2 className="text-sm font-semibold text-gray-900">Market Reference Set</h2>
-              <HelpTip content="These are the products the model calibrates against. Aim for 4–8 well-known competitors that span your price range. Market share is used as a weighting factor — products with higher share have more influence on the fitted line. SME estimates are fine; they don't need to sum to 100%." />
+              <HelpTip content="These are the products the model calibrates against. A typical model has 5–12 reference products, including relevant products from your own portfolio. More is generally better — a broader set produces a more reliable fitted line. The one constraint: every factor you define in Phase 2 must meaningfully differentiate between the reference products you include here. Market share is used as a weighting factor — products with higher share have more influence on the fit. SME estimates are fine; they don't need to sum to 100%." width="w-96" />
             </div>
             <button onClick={addBenchmark} className="text-xs text-blue-600 hover:text-blue-700 font-medium">
               + Add manually

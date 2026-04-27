@@ -495,7 +495,8 @@ export default function Phase6Page() {
   const [factorSortProduct, setFactorSortProduct] = useState<string | null>(null)
   const [valueMode, setValueMode] = useState<'model' | 'diff'>('model')
   const [showLabels, setShowLabels] = useState(false)
-const [categoryAnchor,     setCategoryAnchor]     = useState('')
+  const [categoryAnchor,     setCategoryAnchor]     = useState('')
+  const [targetSegment,      setTargetSegment]      = useState('')
   const [aiNarrative,        setAiNarrative]        = useState('')
   const [aiNarrativeLoading, setAiNarrativeLoading] = useState(false)
   const [aiNarrativeError,   setAiNarrativeError]   = useState('')
@@ -508,7 +509,7 @@ const [categoryAnchor,     setCategoryAnchor]     = useState('')
       // Load price basis label from project
       const { data: projectData } = await supabase
         .from('project')
-        .select('benchmark_price_basis, benchmark_price_basis_custom_description, category_anchor')
+        .select('benchmark_price_basis, benchmark_price_basis_custom_description, category_anchor, target_segment')
         .eq('id', projectId)
         .single()
       if (projectData) {
@@ -521,6 +522,7 @@ const [categoryAnchor,     setCategoryAnchor]     = useState('')
           'Market Price'
         )
         setCategoryAnchor(projectData.category_anchor ?? '')
+        setTargetSegment(projectData.target_segment ?? '')
       }
 
       // Regression result
@@ -711,6 +713,7 @@ const [categoryAnchor,     setCategoryAnchor]     = useState('')
               value_index: b.value_index,
             })),
             r_squared: modelParams?.r_squared ?? 0,
+            target_segment: targetSegment || undefined,
           },
         }),
       })

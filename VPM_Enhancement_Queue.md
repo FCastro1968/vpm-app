@@ -75,13 +75,14 @@ Priority tiers:
 
 | Pri | Item | Notes |
 |-----|------|-------|
-| 🔴 | ✓ Weighted SSE normalization | DONE — RMSE in $ + NRMSE as % of avg price. Both shown in winning solution card and 8-run table. |
+| 🔴 | ✓ Weighted SSE normalization | DONE — RMSE in $ + NRMSE as % of avg price + RSE as %. All three shown in winning solution card and 8-run table. RSE = Σ w×(predicted−price)² / Σ w×price², computed in solver.py and surfaced in SolverResponse. |
 | 🟡 | ✓ Manual factor exclusion from model run | DONE — include/exclude toggle per benchmark with optional reason field; excluded benchmarks removed from solver run. |
 | 🟡 | ✓ Post-solve diagnostics | DONE — value scale coverage, market share concentration, R² reliability note, factor weight concentration. |
 | 🟡 | ✓ Benchmark Outlier Review (Advanced Diagnostics Tool 2) | DONE — flags large-residual benchmarks post-solve; "Exclude & Re-run" button; auto-shown on poor fit (R² < 0.6) or flagged outliers. |
 | 🟡 | ✓ User override of winning solver solution | DONE — select any of 8 runs as active, saves to DB, amber badge shown when overridden. |
 | 🟡 | ✓ Price Delta % in sensitivity analysis | DONE — signed % column added to sensitivity table showing model price change when each factor is excluded. |
 | 🟢 | ✓ Market-Implied Weight Analysis (Advanced Diagnostics Tool 3) | DONE — Nelder-Mead solver finds market-implied weights via `/api/solver?endpoint=market-implied-weights`; side-by-side comparison table; gap thresholds scale to equal-share weight (neutral <25%, amber 25–65%, red >65% of 100/N pp); R²-based footer conclusion (material if gap >3pp); rank condition check gates the run button. |
+| 🟡 | ✓ Solver error UX | DONE — Phase 5 `runSolver` maps HTTP errors to plain-language messages: 503 → "service temporarily unavailable", 401 → "session expired", convergence failure → descriptive fallback instead of raw `data.error`. |
 | 🟢 | Multi-segment / Multi-geography model | 🏗 Run the same framework against multiple market segments or geographies as separate model instances. Each instance has its own benchmark set and market prices. Phase 6 shows side-by-side price recommendations and value map overlay across segments. Useful when the same product positions differently by region or customer type. |
 | 🟢 | ✓ Respondent-level model analysis (Advanced Diagnostics Tool 4) | DONE — per-respondent priority vectors + individual solver runs (all parallel via Promise.all); factor weight distribution table with consensus row; outlier detection at ±2 SD from mean target price (highlighted in amber); stability footer summarizing spread and flagging outliers. |
 | 🟢 | ✓ AI diagnostic explanations | DONE — after solver run, fires background AI call with R², NRMSE, factor weights, sensitivity signals, outliers, and target recommendations; plain-language interpretation displayed in "Model Interpretation" section beneath diagnostics. Uses `explain_diagnostics` task in `/api/ai/route.ts`. |
@@ -95,7 +96,7 @@ Priority tiers:
 |-----|------|-------|
 | 🔴 | Executive summary PDF export | PDF route end-to-end via Phase 7 Export button (POST with pre-computed sensitivity). Pages: cover, model params, benchmarks, targets, factor contributions, Reference Product Price Sensitivity tornado, Factor Sensitivity with Signal column. Factor Contributions chart: split-dot + count badges + white halo + z-order priority done. Still missing: range bars, avg tick, hollow/solid dot distinction. |
 | 🔴 | PDF Factor Contributions chart — complete lollipop rebuild | Split-dot aggregation + count badges + white halo + z-order done. Remaining: gray range bar per factor, avg tick, hollow ref dots vs solid target dots. Use `<Svg>` primitives in `lib/pdf/VPMReport.tsx`. |
-| 🟡 | ✓ AI narrative summary | DONE — `generate_narrative` task in `/api/ai/route.ts`; "Positioning Narrative" section above Value Map with "✦ Generate Narrative" button, copy-to-clipboard, regenerate action. 4–6 sentence executive-level summary. Feeds into future PDF/PPTX exports. |
+| 🟡 | ✓ AI narrative summary | DONE — `generate_narrative` task in `/api/ai/route.ts`; "Positioning Narrative" section above Value Map with "✦ Generate Narrative" button, copy-to-clipboard, regenerate action. 4–6 sentence executive-level summary. `target_segment` included in prompt when set. Feeds into future PDF/PPTX exports. |
 | 🟡 | XLSX raw data export | Pairwise matrices, weights, utilities, benchmark scores, solver results, sensitivity. |
 | 🟡 | ✓ Value Map interpretation tools | DONE — quadrant shading (soft red = overpriced above diagonal, soft blue = underpriced below), toggleable product name labels ("Labels" button) with connector lines for displaced labels. |
 | 🟡 | PPTX export | Executive summary deck: Value Map + Factor Contributions + Positioning Table + Recommendation. |
@@ -125,6 +126,7 @@ Priority tiers:
 | 🟡 | Comments / annotations | Inline comments on model outputs (Value Map, Factor Contributions, Positioning Table). Threaded, per-user, resolvable. Supports team review before client delivery. |
 | 🟢 | Cross-project summary | Read-only side-by-side price recommendations across projects. Flags inconsistent price basis. |
 | 🟢 | Audit trail visibility | Excluded respondents, benchmarks, factors, solver overrides — stored in DB but not surfaced in UI. |
+| 🟢 | Reference product display order | Benchmarks currently sort alphabetically everywhere (Phases 1–7, PDF) because the `benchmark` table has no `display_order` column. Fix: add `display_order` column, assign on insert in Phase 1, replace all `.order('name')` with `.order('display_order')`. No drag-to-reorder needed — insertion sequence is sufficient. |
 
 ---
 
@@ -170,7 +172,7 @@ Priority tiers:
 | 🟡 | ✓ Profile tab | DONE — display name (Supabase `user_metadata.full_name`), read-only email, password change, initials avatar preview. |
 | 🟡 | ✓ Plan & Billing tab | DONE — managed-access model (no self-serve tiers): Active badge, project count, full capabilities checklist, support email `support@valuepricing.org`. |
 | 🟡 | ✓ Team tab | DONE — member list with roles, pending invites, invite by email (service role API route), role change, remove member. Invite email via Resend (pending verified domain). Auto-accept pending invites on login via email match. |
-| 🟢 | Notifications tab | Stubbed — "coming soon" placeholder. Email preference toggles deferred. |
+| 🟢 | Notifications tab | Stubbed — "coming soon" placeholder. Target use cases: (1) survey submitted by a distributed respondent; (2) teammate advanced project to a new phase; (3) survey deadline approaching (N days before expiry). All are team/collaboration-tier features — not relevant until org accounts are active. |
 | 🟢 | API key management | Generate / revoke personal API tokens. Enterprise only. Feeds future API access feature. |
 
 ---

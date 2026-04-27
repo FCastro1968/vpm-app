@@ -414,9 +414,22 @@ export default function Phase5Page() {
         }),
       })
 
-      if (!res.ok) throw new Error(`Solver request failed: ${res.status}`)
+      if (!res.ok) {
+        let message = 'The model could not be run. Please try again.'
+        try {
+          const errData = await res.json()
+          if (res.status === 503) {
+            message = 'The solver service is temporarily unavailable. Please try again in a moment.'
+          } else if (res.status === 401) {
+            message = 'Session expired. Please refresh the page and try again.'
+          } else if (typeof errData?.error === 'string' && !errData.error.toLowerCase().includes('solver error')) {
+            message = errData.error
+          }
+        } catch {}
+        throw new Error(message)
+      }
       const data = await res.json()
-      if (!data.success) throw new Error(data.error ?? 'Solver returned no result.')
+      if (!data.success) throw new Error(data.error ?? 'The model did not converge. Try adjusting reference product assignments or including more products.')
 
       // Attach target names
       const targetResultsWithNames: TargetResult[] = (data.target_results ?? []).map((tr: any) => ({

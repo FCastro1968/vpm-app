@@ -495,8 +495,9 @@ async function generateNarrative(payload: {
   top_factors: { name: string; weight_pct: number }[]
   benchmarks: { name: string; market_price: number; value_index: number }[]
   r_squared: number
+  target_segment?: string
 }) {
-  const { category_anchor, price_basis_label, targets, top_factors, benchmarks, r_squared } = payload
+  const { category_anchor, price_basis_label, targets, top_factors, benchmarks, r_squared, target_segment } = payload
 
   const targetLines = targets.map(t =>
     `  - ${t.name}: Value Index ${(t.value_index * 100).toFixed(0)}/100, model-implied price $${Math.round(t.point_estimate).toLocaleString()} (${price_basis_label})`
@@ -516,7 +517,9 @@ async function generateNarrative(payload: {
     ? 'The model fit is moderate — recommendations are directionally reliable but should be validated against market feedback.'
     : 'The model fit is limited — treat recommendations as indicative guidance and weight market judgment accordingly.'
 
-  const prompt = `You are writing a positioning narrative for a value-based pricing engagement on: "${category_anchor}".
+  const segmentLine = target_segment ? `\nTarget customer segment: ${target_segment}` : ''
+
+  const prompt = `You are writing a positioning narrative for a value-based pricing engagement on: "${category_anchor}".${segmentLine}
 
 Target product${targets.length > 1 ? 's' : ''}:
 ${targetLines}

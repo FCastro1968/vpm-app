@@ -584,7 +584,7 @@ export default function Phase1Page() {
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-1.5">
               <h2 className="text-sm font-semibold text-gray-900">Market Reference Set</h2>
-              <HelpTip content="These are the products the model calibrates against. A typical model has 5–12 reference products, including relevant products from your own portfolio. More is generally better — a broader set produces a more reliable fitted line. The one constraint: every factor you define in Phase 2 must meaningfully differentiate between the reference products you include here. Market share is used as a weighting factor — products with higher share have more influence on the fit. SME estimates are fine; they don't need to sum to 100%." width="w-96" />
+              <HelpTip content="These are the products the model calibrates against. A typical model has 5–12 reference products, including relevant products from your own portfolio. More is generally better — a broader set produces a more reliable model fit. The one constraint: factors you define in Phase 2 must completely differentiate between the reference products you include here. Market share is used as a weighting factor — products with higher share have more influence on the fit. SME estimates are fine; they don't need to sum to 100%." width="w-96" />
             </div>
             <button onClick={addBenchmark} className="text-xs text-blue-600 hover:text-blue-700 font-medium">
               + Add manually

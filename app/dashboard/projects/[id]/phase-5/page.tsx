@@ -1048,7 +1048,7 @@ export default function Phase5Page() {
                 <section className="bg-white rounded-lg shadow-sm border border-amber-200 p-6">
                   <div className="flex items-center gap-2 mb-2">
                     <h2 className="text-base font-semibold text-gray-900 flex items-center gap-1.5">Benchmark Outlier Review
-                    <HelpTip width="w-80" content="Reference products whose market price is much higher or lower than the model predicts given their value score. Consider excluding a product if its price reflects factors outside your framework (e.g. a brand premium, clearance pricing, or a supply contract) rather than a model fit problem." />
+                    <HelpTip width="w-80" content="Reference products whose market price is much higher or lower than the model predicts given their value score. Consider excluding a product if its price reflects factors outside your framework (e.g. a clearance promotion, a supply contract, or a channel-specific discount) rather than a genuine model fit problem." />
                   </h2>
                     {outlierIndices.length > 0 && (
                       <span className="text-xs font-medium bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">

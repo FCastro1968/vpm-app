@@ -979,7 +979,7 @@ export default function Phase2Page() {
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
                         Factor {fi + 1} name
-                        <HelpTip content="A good factor is meaningful to buyers, measurable across competing products, and independent from other factors. Aim for 4–8 factors total. Avoid factors that overlap or that buyers can't observe." />
+                        <HelpTip content="A good factor is meaningful to buyers, measurable across competing products, and independent from other factors. A typical model has 8–12 factors — enough to fully differentiate between the reference products. Avoid factors that overlap or that buyers can't observe." />
                       </label>
                       <input
                         type="text"

@@ -1285,7 +1285,7 @@ const [categoryAnchor,     setCategoryAnchor]     = useState('')
           <div className="flex items-center justify-between mt-2">
             <div className="flex items-center gap-6 text-xs text-gray-500">
             <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full bg-blue-500 inline-block" /> Reference products (bubble size = market share)
+              <span className="w-3 h-3 rounded-full bg-blue-500 inline-block" /> Reference products (bubble size = market share) — hover for details
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-6 border-t border-dashed border-gray-400 inline-block" /> Fair value line (above = overpriced, below = underpriced)

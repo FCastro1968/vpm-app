@@ -553,8 +553,21 @@ export default function Phase5Page() {
 
   // ── Select solver run override ───────────────────────────────────────────
 
+  function recomputeResiduals(b: number, m: number, vis: number[], prices: number[]) {
+    const residuals = vis.map((vi, i) => prices[i] - (b + vi * (m - b)))
+    const sorted = [...residuals].sort((a, c) => a - c)
+    const q1 = sorted[Math.floor(sorted.length * 0.25)]
+    const q3 = sorted[Math.floor(sorted.length * 0.75)]
+    const iqr = q3 - q1
+    return {
+      residuals,
+      outlierFlags: residuals.map(r => Math.abs(r) > 1.5 * iqr),
+    }
+  }
+
   async function selectRun(run: any, index: number) {
     if (!solverResult) return
+    const benchPrices = includedBenchmarks.map(b => b.market_price)
     const isAlreadySelected = selectedRunIndex === index
     if (isAlreadySelected) {
       // Reset to auto-winner
@@ -564,6 +577,9 @@ export default function Phase5Page() {
         r.converged && !r.degenerate && (best === null || r.weighted_sse < best.weighted_sse) ? r : best
       , null)
       if (!autoWinner) return
+      const { residuals, outlierFlags } = recomputeResiduals(
+        autoWinner.b, autoWinner.m, solverResult.benchmark_value_indices, benchPrices
+      )
       setSolverResult(prev => prev ? {
         ...prev,
         b: autoWinner.b,
@@ -573,6 +589,8 @@ export default function Phase5Page() {
         rse: autoWinner.rse ?? prev.rse,
         constraint_regime: autoWinner.constraint_regime,
         init_strategy: autoWinner.init_strategy,
+        benchmark_residuals: residuals,
+        outlier_flags: outlierFlags,
         target_results: prev.target_results.map((tr, i) => ({
           ...tr,
           point_estimate: autoWinner.target_point_estimates?.[i] ?? tr.point_estimate,
@@ -596,6 +614,9 @@ export default function Phase5Page() {
       }
     } else {
       setSelectedRunIndex(index)
+      const { residuals, outlierFlags } = recomputeResiduals(
+        run.b, run.m, solverResult.benchmark_value_indices, benchPrices
+      )
       setSolverResult(prev => prev ? {
         ...prev,
         b: run.b,
@@ -605,6 +626,8 @@ export default function Phase5Page() {
         rse: run.rse ?? prev?.rse,
         constraint_regime: run.constraint_regime,
         init_strategy: run.init_strategy,
+        benchmark_residuals: residuals,
+        outlier_flags: outlierFlags,
         target_results: prev.target_results.map((tr, i) => ({
           ...tr,
           point_estimate: run.target_point_estimates?.[i] ?? tr.point_estimate,

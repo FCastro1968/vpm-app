@@ -43,6 +43,7 @@ interface SolverResult {
   m: number
   weighted_sse: number
   r_squared_weighted: number
+  rse: number
   constraint_regime: string
   init_strategy: string
   near_equivalent_flag: boolean
@@ -99,6 +100,10 @@ function formatNrmse(weightedSse: number, prices: number[]) {
   const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length
   if (avgPrice <= 0) return '—'
   return (rmse / avgPrice * 100).toFixed(1) + '%'
+}
+
+function formatRse(rse: number) {
+  return (rse * 100).toFixed(1) + '%'
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -565,6 +570,7 @@ export default function Phase5Page() {
         m: autoWinner.m,
         weighted_sse: autoWinner.weighted_sse,
         r_squared_weighted: autoWinner.r_squared,
+        rse: autoWinner.rse ?? prev.rse,
         constraint_regime: autoWinner.constraint_regime,
         init_strategy: autoWinner.init_strategy,
         target_results: prev.target_results.map((tr, i) => ({
@@ -596,6 +602,7 @@ export default function Phase5Page() {
         m: run.m,
         weighted_sse: run.weighted_sse,
         r_squared_weighted: run.r_squared,
+        rse: run.rse ?? prev?.rse,
         constraint_regime: run.constraint_regime,
         init_strategy: run.init_strategy,
         target_results: prev.target_results.map((tr, i) => ({
@@ -775,7 +782,7 @@ export default function Phase5Page() {
             {/* Model fit */}
             <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-base font-semibold text-gray-900 mb-4">Model Fit</h2>
-              <div className="grid grid-cols-3 gap-4 mb-4">
+              <div className="grid grid-cols-4 gap-4 mb-4">
                 <div className="bg-gray-50 rounded-md p-3">
                   <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">Weighted R²
                     <HelpTip width="w-80" content="R² measures how well the model explains price differences across reference products. Above 0.85 is strong; 0.70–0.85 is acceptable; below 0.70 suggests the value framework may not fully capture what drives market pricing. NRMSE shows average prediction error as a % of mean price — below 10% is good." />
@@ -798,6 +805,12 @@ export default function Phase5Page() {
                   <div className="text-xs text-gray-500 mb-1">Avg. Fit Error</div>
                   <div className="text-sm font-medium text-gray-800">{formatRmse(solverResult.weighted_sse, solverResult.benchmark_value_indices.length)}</div>
                   <div className="text-xs text-gray-400">{formatNrmse(solverResult.weighted_sse, includedBenchmarks.map(b => b.market_price))} of avg. price</div>
+                </div>
+                <div className="bg-gray-50 rounded-md p-3">
+                  <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">RSE
+                    <HelpTip width="w-72" content="Relative Squared Error — weighted sum of squared residuals divided by weighted sum of squared prices. Unlike NRMSE which scales by average price, RSE directly measures error relative to the price magnitudes being modeled. Below 5% is strong; above 15% suggests the model is missing significant drivers of price variation." />
+                  </div>
+                  <div className="text-sm font-medium text-gray-800">{formatRse(solverResult.rse)}</div>
                 </div>
               </div>
 
@@ -837,7 +850,8 @@ export default function Phase5Page() {
                           <th key={tr.target_id} className="text-right text-gray-500 pb-2 pr-4 border-b border-gray-100">{tr.name} est.</th>
                         ))}
                         <th className="text-right text-gray-500 pb-2 pr-4 border-b border-gray-100">R²</th>
-                        <th className="text-right text-gray-500 pb-2 pr-4 border-b border-gray-100">Avg. Fit Error</th>
+                        <th className="text-right text-gray-500 pb-2 pr-4 border-b border-gray-100">NRMSE</th>
+                        <th className="text-right text-gray-500 pb-2 pr-4 border-b border-gray-100">RSE</th>
                         <th className="text-right text-gray-500 pb-2 pr-4 border-b border-gray-100">Converged</th>
                         <th className="text-left text-gray-500 pb-2 border-b border-gray-100">Notes</th>
                         <th className="pb-2 border-b border-gray-100"></th>
@@ -870,6 +884,7 @@ export default function Phase5Page() {
                             }
                             <td className="py-1.5 pr-4 text-right text-gray-700">{run.r_squared != null ? `${(run.r_squared * 100).toFixed(1)}%` : '—'}</td>
                             <td className="py-1.5 pr-4 text-right text-gray-700">{run.weighted_sse != null ? formatNrmse(run.weighted_sse, includedBenchmarks.map(b => b.market_price)) : '—'}</td>
+                            <td className="py-1.5 pr-4 text-right text-gray-700">{run.rse != null ? formatRse(run.rse) : '—'}</td>
                             <td className="py-1.5 pr-4 text-right text-gray-700">{run.converged ? '✓' : '✗'}</td>
                             <td className="py-1.5 text-gray-500">{!run.converged ? 'Did not converge' : run.degenerate ? 'Degenerate' : ''}</td>
                             <td className="py-1.5 pl-2">

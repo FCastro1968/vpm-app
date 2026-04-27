@@ -87,6 +87,7 @@ class SolverResponse(BaseModel):
     m: Optional[float] = None
     weighted_sse: Optional[float] = None
     r_squared_weighted: Optional[float] = None
+    rse: Optional[float] = None
     constraint_regime: Optional[str] = None
     init_strategy: Optional[str] = None
 
@@ -232,6 +233,7 @@ def solve(req: SolverRequest):
             m=round(m, 4),
             weighted_sse=round(result['weighted_sse'], 6),
             r_squared_weighted=round(result['r_squared_weighted'], 6),
+            rse=round(result['rse'], 6),
             constraint_regime=result['constraint_regime'],
             init_strategy=result['init_strategy'],
             near_equivalent_flag=result['near_equivalent_flag'],

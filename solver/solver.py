@@ -245,14 +245,16 @@ def run_solver(value_scores, market_prices, market_share_weights, target_value_s
             r['init_strategy'] = strategy
             all_runs.append(r)
 
-    # Add R-squared and target point estimates to each run for comparison table
-    p_wmean = float(np.average(p, weights=w))
-    ss_tot = float(np.sum(w * (p - p_wmean) ** 2))
+    # Add R-squared, RSE, and target point estimates to each run for comparison table
+    p_wmean  = float(np.average(p, weights=w))
+    ss_tot   = float(np.sum(w * (p - p_wmean) ** 2))
+    ss_prices = float(np.sum(w * p ** 2))
     for r in all_runs:
         if r['converged'] and not r['degenerate'] and r['b'] is not None and r['m'] is not None:
             predicted = r['b'] + v * (r['m'] - r['b'])
             ss_res = float(np.sum(w * (p - predicted) ** 2))
             r['r_squared'] = round(float(1.0 - ss_res / ss_tot) if ss_tot > 0 else 0.0, 4)
+            r['rse'] = round(float(ss_res / ss_prices) if ss_prices > 0 else 0.0, 6)
             if target_value_scores:
                 r['target_point_estimates'] = [
                     round(float(r['b'] + tv * (r['m'] - r['b'])), 2)
@@ -260,6 +262,7 @@ def run_solver(value_scores, market_prices, market_share_weights, target_value_s
                 ]
         else:
             r['r_squared'] = None
+            r['rse'] = None
             r['target_point_estimates'] = None
 
     valid = [
@@ -284,10 +287,11 @@ def run_solver(value_scores, market_prices, market_share_weights, target_value_s
     b, m = winner['b'], winner['m']
     predicted = b + v * (m - b)
     residuals = p - predicted
-    ss_res  = float(np.sum(w * residuals ** 2))
-    p_wmean = float(np.average(p, weights=w))
-    ss_tot  = float(np.sum(w * (p - p_wmean) ** 2))
+    ss_res    = float(np.sum(w * residuals ** 2))
+    p_wmean   = float(np.average(p, weights=w))
+    ss_tot    = float(np.sum(w * (p - p_wmean) ** 2))
     r_squared = float(1.0 - ss_res / ss_tot) if ss_tot > 0 else 0.0
+    rse       = float(ss_res / ss_prices) if ss_prices > 0 else 0.0
     q1, q3 = float(np.percentile(residuals, 25)), float(np.percentile(residuals, 75))
     iqr = q3 - q1
 
@@ -297,6 +301,7 @@ def run_solver(value_scores, market_prices, market_share_weights, target_value_s
         'm': m,
         'weighted_sse': float(winner['weighted_sse']),
         'r_squared_weighted': r_squared,
+        'rse': rse,
         'constraint_regime': winner['constraint_regime'],
         'init_strategy': winner['init_strategy'],
         'near_equivalent_flag': near_eq,

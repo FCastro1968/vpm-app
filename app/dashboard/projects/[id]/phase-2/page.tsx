@@ -884,7 +884,10 @@ export default function Phase2Page() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-base font-semibold text-gray-900">Factors</h2>
+              <div className="flex items-center gap-1.5">
+                <h2 className="text-base font-semibold text-gray-900">Factors</h2>
+                <HelpTip content="Factors are the dimensions buyers weigh when choosing between products — things like performance, reliability, support, or brand. Each factor gets importance-weighted through the preference survey and then drives the value score for every product. Good factors are observable, meaningful to buyers, and distinct from each other. Avoid factors that overlap heavily or that buyers can't actually evaluate." width="w-96" />
+              </div>
               <p className="text-xs text-gray-500 mt-0.5">
                 Define the purchase-decision dimensions. Recommended: 6–12 factors.
               </p>
@@ -1093,9 +1096,10 @@ export default function Phase2Page() {
           <section className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-base font-semibold text-gray-900">
-                  Reference Product Assignments
-                </h2>
+                <div className="flex items-center gap-1.5">
+                  <h2 className="text-base font-semibold text-gray-900">Reference Product Assignments</h2>
+                  <HelpTip content="For each reference product, select the performance level that best describes where it sits on each factor. These assignments determine each product's value score — the model uses them to calibrate how much each factor level is worth in dollar terms. Every product needs a level for every factor before the model can run." width="w-96" />
+                </div>
                 <p className="text-xs text-gray-500 mt-0.5">
                   Assign each reference product to the appropriate performance level for each factor.
                 </p>
@@ -1234,9 +1238,10 @@ export default function Phase2Page() {
         {targetProducts.length > 0 && factors.some(f => f.name.trim()) && (
           <section className="bg-white rounded-lg shadow p-6">
             <div className="mb-4">
-              <h2 className="text-base font-semibold text-gray-900">
-                Target Product Assignments
-              </h2>
+              <div className="flex items-center gap-1.5">
+                <h2 className="text-base font-semibold text-gray-900">Target Product Assignments</h2>
+                <HelpTip content="Assign each target product to the performance level it will deliver (or currently delivers) on each factor. For a new product, use the intended specification. For a repositioning exercise, use the current spec to see where you stand today, or a future spec to model a planned change. The model uses these assignments to compute the target's value score and derive a price recommendation." width="w-96" />
+              </div>
               <p className="text-xs text-gray-500 mt-0.5">
                 Assign each target product to the appropriate performance level for each factor. For new products, assign the intended specification.
               </p>

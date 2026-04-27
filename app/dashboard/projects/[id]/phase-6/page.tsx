@@ -358,13 +358,17 @@ function FactorLollipop({ allProducts, factorsOrdered, factorsBase, priceRange, 
               const rank = [...vals].sort((a: number, b: number) => b - a).indexOf(val) + 1
               const pct = totals[pi] > 0 ? Math.round(val / totals[pi] * 100) : 0
               const levelName = prod.contributions.find((c: any) => c.factor_id === factor.id)?.level_name ?? ''
+              const color = getColor(prod, pi)
               tt.innerHTML = `
-                <div style="font-weight:500;color:#111;margin-bottom:3px;">${prod.fullName}${prod.isTarget ? ' ★' : ''}</div>
-                <div style="color:#6b7280;font-size:11px;margin-bottom:${levelName ? '1px' : '6px'};">${factor.name}</div>
-                ${levelName ? `<div style="color:#374151;font-size:11px;font-weight:500;margin-bottom:6px;">${levelName}</div>` : ''}
+                <div style="color:#6b7280;font-size:11px;margin-bottom:${levelName ? '1px' : '3px'};">${factor.name}</div>
+                ${levelName ? `<div style="color:#374151;font-size:11px;font-weight:500;margin-bottom:3px;">${levelName}</div>` : ''}
                 <div style="font-size:14px;font-weight:500;color:#111;">$${Math.round(val).toLocaleString()}</div>
-                <div style="color:#9ca3af;font-size:11px;margin-top:3px;">${dev >= 0 ? '+' : '-'}$${Math.round(Math.abs(dev)).toLocaleString()} vs avg · rank #${rank}</div>
-                <div style="color:#9ca3af;font-size:11px;">${pct}% of differentiated value</div>
+                <div style="color:#9ca3af;font-size:11px;margin-top:1px;margin-bottom:5px;padding-bottom:5px;border-bottom:1px solid #f3f4f6;">${dev >= 0 ? '+' : '-'}$${Math.round(Math.abs(dev)).toLocaleString()} vs avg · rank #${rank}</div>
+                <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+                  <span style="width:8px;height:8px;border-radius:50%;background:${prod.isTarget ? color : 'transparent'};border:1.5px solid ${color};flex-shrink:0;"></span>
+                  <span style="color:#374151;">${prod.fullName}${prod.isTarget ? ' ★' : ''}</span>
+                  <span style="margin-left:auto;color:#9ca3af;font-size:10px;">${pct}% of diff. value</span>
+                </div>
               `
             } else {
               const val = vals[pi]

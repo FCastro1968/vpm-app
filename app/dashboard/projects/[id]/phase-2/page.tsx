@@ -44,7 +44,6 @@ type Assignments = Record<string, Record<string, number>>
 const MIN_FACTORS = 2
 const MAX_FACTORS = 20
 const MIN_LEVELS = 2
-const MAX_LEVELS = 6
 
 function emptyFactor(display_order: number): Factor {
   return {
@@ -257,7 +256,6 @@ export default function Phase2Page() {
 
   function addLevel(factorIndex: number) {
     const factor = factors[factorIndex]
-    if (factor.levels.length >= MAX_LEVELS) return
     setFrameworkDirty(true)
     const newLevel: Level = {
       name: '',

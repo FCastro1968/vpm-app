@@ -1027,14 +1027,12 @@ export default function Phase2Page() {
                           {factor.suggestingLevels ? 'Suggesting...' : '✦ Suggest levels'}
                         </button>
                       )}
-                      {factor.levels.length < MAX_LEVELS && (
-                        <button
-                          onClick={() => addLevel(fi)}
-                          className="text-xs text-blue-600 hover:text-blue-700"
-                        >
-                          + Add level
-                        </button>
-                      )}
+                      <button
+                        onClick={() => addLevel(fi)}
+                        className="text-xs text-blue-600 hover:text-blue-700"
+                      >
+                        + Add level
+                      </button>
                     </div>
                   </div>
 

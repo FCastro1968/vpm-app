@@ -144,6 +144,65 @@ def aggregate_pairwise_matrices(matrices):
     return np.exp(np.mean(np.log(arr), axis=0)).tolist()
 
 
+def consensus_analysis(matrices, labels=None):
+    """Between-respondent agreement for one comparison set (Consensus Score).
+
+    Coherence (CR) measures within-respondent consistency; this measures
+    whether the respondents agree WITH EACH OTHER. For each pair (i, j), the
+    dispersion of judgments across respondents is the geometric standard
+    deviation of the pairwise ratios: gsd = exp(std(ln a_ij)). gsd = 1 means
+    perfect agreement; gsd = 3 means respondents typically sit a 3x ratio
+    apart on that comparison.
+
+    Per-pair agreement maps log-dispersion linearly onto [0, 1] with zero at
+    one full scale width (ln 9): agreement = 1 - min(s / ln 9, 1). The set's
+    Consensus Score is the mean pair agreement as a percentage. Bands:
+    >= 80 STRONG, >= 60 MODERATE, else LOW. Pairs with gsd >= 2.5 are flagged
+    for facilitator review, with the respondents anchoring each side named.
+    Thresholds are initial calibrations — tune against real workshops.
+    """
+    arr = np.array(matrices, dtype=float)
+    n_resp = arr.shape[0]
+    if n_resp < 2:
+        return {'skipped': True, 'reason': 'Requires at least 2 respondents.'}
+    n = arr.shape[1]
+    ln9 = float(np.log(9.0))
+    logs = np.log(arr)
+
+    pairs = []
+    agreements = []
+    for i in range(n):
+        for j in range(i + 1, n):
+            vals = logs[:, i, j]
+            s = float(np.std(vals))
+            gsd = float(np.exp(s))
+            agreement = max(0.0, 1.0 - min(s / ln9, 1.0))
+            agreements.append(agreement)
+            hi = int(np.argmax(vals))
+            lo = int(np.argmin(vals))
+            pairs.append({
+                'i': i, 'j': j,
+                'gsd': round(gsd, 4),
+                'agreement_pct': round(agreement * 100, 2),
+                'flagged': bool(gsd >= 2.5),
+                'max_label': labels[hi] if labels else f'Respondent {hi + 1}',
+                'min_label': labels[lo] if labels else f'Respondent {lo + 1}',
+                'max_ratio': round(float(arr[hi, i, j]), 4),
+                'min_ratio': round(float(arr[lo, i, j]), 4),
+            })
+
+    score = float(np.mean(agreements) * 100) if agreements else 100.0
+    band = 'STRONG' if score >= 80 else 'MODERATE' if score >= 60 else 'LOW'
+    pairs.sort(key=lambda x: x['gsd'], reverse=True)
+    return {
+        'skipped': False,
+        'consensus_score': round(score, 2),
+        'band': band,
+        'n_respondents': int(n_resp),
+        'pairs': pairs,
+    }
+
+
 def compute_scaled_score(level_assignments, attribute_weights, level_utilities, attribute_levels):
     """Option 2 formula: weight * (utility - minUtil) / (maxUtil - minUtil) per factor.
     Min level -> 0 contribution, max level -> full factor weight.

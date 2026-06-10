@@ -16,6 +16,7 @@ from solver import (
     consistency_ratio,
     is_scale_adjusted,
     aggregate_pairwise_matrices,
+    consensus_analysis,
     build_value_index_scores,
     run_solver,
     run_loo_cv,
@@ -49,6 +50,11 @@ class AggregateMatrixResponse(BaseModel):
     consistency_ratio: float
     cr_flag: str
     scale_adjusted: bool
+
+
+class ConsensusRequest(BaseModel):
+    matrices: list[list[list[float]]] = Field(..., description="One n x n matrix per respondent")
+    labels: Optional[list[str]] = None  # respondent display names, parallel to matrices
 
 
 class SolverRequest(BaseModel):
@@ -174,6 +180,19 @@ def aggregate_matrix(req: AggregateMatrixRequest):
             cr_flag=cr_flag,
             scale_adjusted=is_scale_adjusted(aggregated),
         )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/consensus")
+def consensus(req: ConsensusRequest):
+    """
+    Between-respondent agreement (Consensus Score) for one comparison set.
+    Complements per-respondent CR: CR asks "is each individual coherent?",
+    consensus asks "do they agree with each other?".
+    """
+    try:
+        return consensus_analysis(req.matrices, labels=req.labels)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

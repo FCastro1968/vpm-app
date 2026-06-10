@@ -67,6 +67,27 @@ interface AggregatedResult {
   item_ids: string[]      // attribute or level IDs in matrix order
 }
 
+interface ConsensusPair {
+  i: number
+  j: number
+  gsd: number
+  agreement_pct: number
+  flagged: boolean
+  max_label: string
+  min_label: string
+  max_ratio: number
+  min_ratio: number
+}
+
+interface ConsensusSet {
+  label: string
+  item_names: string[]    // factor or level names in matrix order
+  consensus_score: number
+  band: 'STRONG' | 'MODERATE' | 'LOW'
+  n_respondents: number
+  pairs: ConsensusPair[]
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function crColor(flag: string) {
@@ -85,6 +106,24 @@ function crLabel(flag: string) {
   if (flag === 'OK')           return 'Acceptable'
   if (flag === 'MARGINAL')     return 'Marginal'
   return                              'Inconsistent'
+}
+
+function consensusColor(band: string) {
+  if (band === 'STRONG')   return 'text-green-700 bg-green-50 border-green-200'
+  if (band === 'MODERATE') return 'text-amber-700 bg-amber-50 border-amber-200'
+  return                          'text-red-700 bg-red-50 border-red-200'
+}
+
+function consensusDot(band: string) {
+  if (band === 'STRONG')   return 'bg-green-500'
+  if (band === 'MODERATE') return 'bg-amber-400'
+  return                          'bg-red-500'
+}
+
+function consensusLabel(band: string) {
+  if (band === 'STRONG')   return 'Strong consensus'
+  if (band === 'MODERATE') return 'Moderate consensus'
+  return                          'Low consensus'
 }
 
 async function callSolver(endpoint: string, payload: object): Promise<any> {
@@ -137,6 +176,8 @@ export default function Phase4Page() {
   const [respondents,       setRespondents]        = useState<Respondent[]>([])
   const [respondentCRs,     setRespondentCRs]      = useState<RespondentCRs[]>([])
   const [aggregatedResults, setAggregatedResults]  = useState<AggregatedResult[]>([])
+  const [consensusResults,  setConsensusResults]   = useState<ConsensusSet[] | null>(null)
+  const [expandedConsensus, setExpandedConsensus]  = useState<number | null>(null)
   const [currentUserEmail,  setCurrentUserEmail]   = useState<string | null>(null)
   const [running,           setRunning]            = useState(false)
   const [saving,            setSaving]             = useState(false)
@@ -374,6 +415,8 @@ export default function Phase4Page() {
       // ── Aggregated matrix computation ──────────────────────────────────
 
       const newAggregated: AggregatedResult[] = []
+      const newConsensus: ConsensusSet[] = []
+      const respondentLabels = includedRespondents.map(r => r.name || r.email || 'Respondent')
 
       // Cross-factor aggregation
       const factorIds = factors.map(f => f.id)
@@ -393,6 +436,12 @@ export default function Phase4Page() {
           weights: result.weights,
           item_ids: factorIds,
         })
+        if (includedRespondents.length >= 2) {
+          const cons = await callSolver('consensus', { matrices, labels: respondentLabels })
+          if (!cons.skipped) {
+            newConsensus.push({ label: 'Factor Importance', item_names: factors.map(f => f.name), ...cons })
+          }
+        }
       }
 
       // Per-factor level aggregation
@@ -420,9 +469,17 @@ export default function Phase4Page() {
           weights: result.weights,
           item_ids: levelIds,
         })
+        if (includedRespondents.length >= 2) {
+          const cons = await callSolver('consensus', { matrices, labels: respondentLabels })
+          if (!cons.skipped) {
+            newConsensus.push({ label: factor.name, item_names: factor.levels.map(l => l.name), ...cons })
+          }
+        }
       }
 
       setAggregatedResults(newAggregated)
+      setConsensusResults(newConsensus.length > 0 ? newConsensus : null)
+      setExpandedConsensus(null)
 
       // ── Save to database ───────────────────────────────────────────────
 
@@ -1139,6 +1196,79 @@ export default function Phase4Page() {
                   </div>
                 </div>
               ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── Respondent Consensus ──────────────────────────────────────── */}
+        {consensusResults && consensusResults.length > 0 && (
+          <section className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+            <div className="flex items-center gap-1.5 mb-1">
+              <h2 className="text-base font-semibold text-gray-900">Respondent Consensus</h2>
+              <HelpTip width="w-96" position="below" content="Consensus measures agreement between respondents on each comparison set, on a 0–100% scale where 100% means everyone gave identical judgments. It is independent of the Coherence Score — a team can be individually coherent yet fundamentally disagree about what drives value. Strong ≥ 80%, Moderate 60–80%, Low < 60%. Expand a set to see the specific comparisons where respondents diverged most and who anchored each side — these make excellent workshop discussion points." />
+            </div>
+            <p className="text-xs text-gray-500 mb-4">
+              Coherence measures whether each respondent is internally consistent; consensus measures whether
+              respondents agree with each other. Low consensus often points to the most valuable conversation
+              in the exercise — the places where your team sees value differently.
+            </p>
+            <div className="space-y-2">
+              {consensusResults.map((set, si) => {
+                const flagged = set.pairs.filter(p => p.flagged)
+                const expanded = expandedConsensus === si
+                return (
+                  <div key={si} className="rounded-md border border-gray-100 bg-gray-50">
+                    <div
+                      className="flex items-center justify-between px-4 py-3 cursor-pointer select-none"
+                      onClick={() => setExpandedConsensus(expanded ? null : si)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${consensusDot(set.band)}`} />
+                        <span className="text-sm text-gray-800">{set.label}</span>
+                        {flagged.length > 0 && (
+                          <span className="text-xs text-amber-700">
+                            {flagged.length} divergent comparison{flagged.length !== 1 ? 's' : ''}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-3 py-1 rounded border text-xs font-medium ${consensusColor(set.band)}`}>
+                          {set.consensus_score.toFixed(0)}% — {consensusLabel(set.band)}
+                        </span>
+                        <span className="text-gray-400 text-xs">{expanded ? '▲' : '▼'}</span>
+                      </div>
+                    </div>
+                    {expanded && (
+                      <div className="px-4 pb-3 pt-1 border-t border-gray-100">
+                        {flagged.length === 0 ? (
+                          <p className="text-xs text-gray-500 py-2">
+                            No significant divergence — respondents broadly agree on this comparison set.
+                          </p>
+                        ) : (
+                          flagged.slice(0, 5).map((p, pi) => {
+                            const nameI = set.item_names[p.i] ?? `Item ${p.i + 1}`
+                            const nameJ = set.item_names[p.j] ?? `Item ${p.j + 1}`
+                            const opposed = p.max_ratio > 1 && p.min_ratio < 1
+                            return (
+                              <div key={pi} className="py-2 text-xs border-b border-gray-100 last:border-b-0">
+                                <span className="font-medium text-gray-800">{nameI}</span>
+                                <span className="text-gray-500"> vs </span>
+                                <span className="font-medium text-gray-800">{nameJ}</span>
+                                <span className="ml-2 text-amber-700">×{p.gsd.toFixed(1)} spread</span>
+                                <div className="mt-0.5 text-gray-500">
+                                  {opposed
+                                    ? `${p.max_label} favors “${nameI}” while ${p.min_label} favors “${nameJ}”.`
+                                    : `Respondents lean toward “${p.max_ratio >= 1 ? nameI : nameJ}” but differ on strength — ${p.max_label} most strongly, ${p.min_label} least.`}
+                                </div>
+                              </div>
+                            )
+                          })
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </section>
         )}

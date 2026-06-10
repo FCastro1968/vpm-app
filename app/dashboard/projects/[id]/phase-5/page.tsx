@@ -835,7 +835,6 @@ export default function Phase5Page() {
                     )}
                   </div>
                   <div className="text-sm font-medium text-gray-800">{solverResult.constraint_regime.replace(/_/g, ' ')}</div>
-                  <div className="text-xs text-gray-400">{solverResult.init_strategy === 'inside_out' ? 'Centered start' : solverResult.init_strategy === 'outside_in' ? 'Wide start' : solverResult.init_strategy.replace(/_/g, ' ')}</div>
                 </div>
                 <div className="bg-gray-50 rounded-md p-3">
                   <div className="text-xs text-gray-500 mb-1">Avg. Fit Error</div>
@@ -870,7 +869,7 @@ export default function Phase5Page() {
                 onClick={() => setShowAllRuns(!showAllRuns)}
                 className="text-xs text-blue-600 hover:text-blue-700 mt-2"
               >
-                {showAllRuns ? '▲ Hide all solver runs' : '▼ Show all 8 solver runs'}
+                {showAllRuns ? '▲ Hide all solver runs' : `▼ Show all ${solverResult.all_runs.length} solver runs`}
               </button>
 
               {showAllRuns && (
@@ -879,7 +878,6 @@ export default function Phase5Page() {
                     <thead>
                       <tr>
                         <th className="text-left text-gray-500 pb-2 pr-4 border-b border-gray-100">Regime</th>
-                        <th className="text-left text-gray-500 pb-2 pr-4 border-b border-gray-100">Init</th>
                         <th className="text-right text-gray-500 pb-2 pr-4 border-b border-gray-100">B (base)</th>
                         <th className="text-right text-gray-500 pb-2 pr-4 border-b border-gray-100">M (max)</th>
                         {solverResult.target_results.map(tr => (
@@ -895,8 +893,7 @@ export default function Phase5Page() {
                     </thead>
                     <tbody>
                       {solverResult.all_runs.map((run, i) => {
-                        const initLabel = run.init_strategy === 'inside_out' ? 'Centered' : run.init_strategy === 'outside_in' ? 'Wide' : run.init_strategy?.replace(/_/g, ' ')
-                        const autoWinnerMatch = run.constraint_regime === solverResult.constraint_regime && run.init_strategy === solverResult.init_strategy
+                        const autoWinnerMatch = run.constraint_regime === solverResult.constraint_regime
                         const isSelected = selectedRunIndex === i || (selectedRunIndex === null && autoWinnerMatch)
                         const isSelectable = run.converged && !run.degenerate
                         return (
@@ -905,7 +902,6 @@ export default function Phase5Page() {
                               {run.constraint_regime?.replace(/_/g, ' ')}
                               {isSelected && <span className="ml-1 text-blue-600">★</span>}
                             </td>
-                            <td className="py-1.5 pr-4 text-gray-700">{initLabel}</td>
                             <td className="py-1.5 pr-4 text-right text-gray-700">{run.b != null ? formatCurrency(run.b) : '—'}</td>
                             <td className="py-1.5 pr-4 text-right text-gray-700">{run.m != null ? formatCurrency(run.m) : '—'}</td>
                             {run.target_point_estimates

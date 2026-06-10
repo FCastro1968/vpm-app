@@ -75,6 +75,8 @@ Priority tiers:
 
 | Pri | Item | Notes |
 |-----|------|-------|
+| 🔴 | ✓ Solver golden-file regression test suite (Improvements Spec Item 1) | DONE — `solver/tests/`: 4 frozen fixtures + goldens, 71 tests. Named guards: Option 2 formula revert, WLS→OLS slip, GMM arithmetic, dual-init agreement (convexity), regime nesting, utility-driven anchors, Equal-rating behavior. Sabotage-verified (deliberate formula revert fails 27 tests; weights-drop fails its named test). Regeneration policy in tests/README.md. |
+| 🔴 | ✓ Convexity verification + 8→4 run collapse (Improvements Spec Item 8 Step 0) | DONE — each regime is a convex QP (predicted price linear in B/M, all constraints linear): unique optimum per regime, so dual initialization was redundant. Solver now runs 4 (one per regime, OUTSIDE_IN start). Winner ties resolve to least-constrained regime (deterministic label on flat valleys). B ≥ 0 confirmed already universal. Phase 5 table shows 4 solutions, Init column removed. SOLVER_VERSION 2.0.0. |
 | 🔴 | ✓ Weighted SSE normalization | DONE — RMSE in $ + NRMSE as % of avg price + RSE as %. All three shown in winning solution card and 8-run table. RSE = Σ w×(predicted−price)² / Σ w×price², computed in solver.py and surfaced in SolverResponse. |
 | 🟡 | ✓ Manual factor exclusion from model run | DONE — include/exclude toggle per benchmark with optional reason field; excluded benchmarks removed from solver run. |
 | 🟡 | ✓ Post-solve diagnostics | DONE — value scale coverage, market share concentration, R² reliability note, factor weight concentration. |

@@ -11,6 +11,7 @@ from typing import Optional
 import uvicorn
 
 from solver import (
+    SOLVER_VERSION,
     gmm_priority_vector,
     consistency_ratio,
     is_scale_adjusted,
@@ -21,7 +22,7 @@ from solver import (
     run_sensitivity_analysis,
 )
 
-app = FastAPI(title="VPM Solver", version="0.1.0")
+app = FastAPI(title="VPM Solver", version=SOLVER_VERSION)
 
 
 # ============================================================
@@ -107,7 +108,7 @@ class SolverResponse(BaseModel):
     # Sensitivity analysis
     sensitivity: Optional[list[dict]] = None
 
-    # All 8 solver runs (for diagnostics panel)
+    # All solver runs, one per constraint regime (for diagnostics panel)
     all_runs: Optional[list[dict]] = None
 
 
@@ -126,7 +127,7 @@ class MarketImpliedWeightsRequest(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "vpm-solver"}
+    return {"status": "ok", "service": "vpm-solver", "solver_version": SOLVER_VERSION}
 
 
 @app.post("/priority-vector", response_model=PriorityVectorResponse)
@@ -176,7 +177,7 @@ def solve(req: SolverRequest):
     """
     Full model solve:
       1. Build value index scores for benchmarks and targets
-      2. Run 8-instance WLS solver
+      2. Run multi-regime WLS solver (one convex QP per constraint regime)
       3. Compute price recommendations for each target
       4. Optionally run sensitivity analysis
     """

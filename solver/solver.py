@@ -1,6 +1,23 @@
 # -*- coding: utf-8 -*-
 """
 Value Pricing Model - Core Computation Engine
+
+Convexity note (verified June 2026):
+  Predicted price = B + V*(M-B) = B*(1-V) + M*V is LINEAR in (B, M) because the
+  value indices V are fixed before the solve and never recomputed during
+  optimization. Weighted SSE of a linear predictor is a convex quadratic, and
+  every constraint in every regime is linear (B >= 0 and M - B >= eps are
+  universal; the anchored regimes add B <= min(price) and/or M >= max(price)).
+  Each regime is therefore a convex QP with a unique optimum, so multiple
+  initialization strategies cannot find different solutions. The solver runs
+  ONE optimization per constraint regime (4 total) from the OUTSIDE_IN start,
+  which is feasible for every regime. Dual-init agreement is enforced
+  permanently by the golden test suite (tests/test_solver.py), not at runtime.
+
+  The regimes nest: UNIVERSAL_ONLY's feasible region contains all anchored
+  regions, so SSE(UNIVERSAL_ONLY) <= SSE(anchored) always. The default active
+  solution is the lowest-SSE valid converged run; anchored solutions exist as
+  user-override alternatives only.
 """
 
 import numpy as np
@@ -9,6 +26,8 @@ from typing import Optional
 import warnings
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
+
+SOLVER_VERSION = "2.0.0"  # 2.0.0 = 8->4 run collapse after convexity verification
 
 
 def to_python(obj):
@@ -236,14 +255,17 @@ def run_solver(value_scores, market_prices, market_share_weights, target_value_s
             return price_mean * 0.95, price_mean * 1.05
         return max(0.0, price_min - price_range), price_max + price_range
 
+    # One run per regime: each regime is a convex QP (see module docstring), so a
+    # single optimization finds the unique optimum. OUTSIDE_IN is used because its
+    # start point is feasible for every regime (INSIDE_OUT can start infeasible
+    # for M-anchored regimes when max price > 1.05x mean price).
     all_runs = []
     for regime in ['UNIVERSAL_ONLY', 'B_ANCHORED', 'M_ANCHORED', 'BOTH_ANCHORED']:
-        for strategy in ['INSIDE_OUT', 'OUTSIDE_IN']:
-            b_init, m_init = get_init(strategy)
-            r = run_single_solver(v, p, w, b_init, m_init, make_constraints(regime), epsilon)
-            r['constraint_regime'] = regime
-            r['init_strategy'] = strategy
-            all_runs.append(r)
+        b_init, m_init = get_init('OUTSIDE_IN')
+        r = run_single_solver(v, p, w, b_init, m_init, make_constraints(regime), epsilon)
+        r['constraint_regime'] = regime
+        r['init_strategy'] = 'OUTSIDE_IN'
+        all_runs.append(r)
 
     # Add R-squared, RSE, and target point estimates to each run for comparison table
     p_wmean  = float(np.average(p, weights=w))
@@ -272,7 +294,15 @@ def run_solver(value_scores, market_prices, market_share_weights, target_value_s
     if not valid:
         return {'success': False, 'error': 'No valid solver solutions found.', 'all_runs': all_runs}
 
-    winner = min(valid, key=lambda r: r['weighted_sse'])
+    # Winner = lowest weighted SSE among valid converged runs. When several runs
+    # tie within numerical tolerance (anchors inactive -> all regimes share one
+    # optimum, differing only by optimizer termination noise), prefer the
+    # least-constrained regime: `valid` preserves regime order with
+    # UNIVERSAL_ONLY first, so the first run within tolerance of the minimum
+    # wins. This keeps the winning regime label deterministic.
+    min_sse = min(r['weighted_sse'] for r in valid)
+    tie_tol = min_sse * 1e-6 + 1e-12
+    winner = next(r for r in valid if r['weighted_sse'] <= min_sse + tie_tol)
     threshold = winner['weighted_sse'] * 1.02
     near_eq = bool(any(
         r is not winner

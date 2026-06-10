@@ -1,0 +1,296 @@
+{
+  "solver_version": "2.0.0",
+  "attribute_weights": {
+    "f1_performance": 0.2881668620568258,
+    "f2_capacity": 0.18300839103691624,
+    "f3_reliability": 0.15642667843355965,
+    "f4_service": 0.11622457541046577,
+    "f5_connectivity": 0.09934311853570998,
+    "f6_usability": 0.08997741333956687,
+    "f7_brand": 0.06685296118695552
+  },
+  "attribute_cr": 0.012764789496835821,
+  "level_utilities": {
+    "f1_performance_l1": 0.0759310723482126,
+    "f1_performance_l2": 0.1518621446964252,
+    "f1_performance_l3": 0.28264729953631884,
+    "f1_performance_l4": 0.4895594834190434,
+    "f2_capacity_l1": 0.10945228951551982,
+    "f2_capacity_l2": 0.3089956436328642,
+    "f2_capacity_l3": 0.581552066851616,
+    "f3_reliability_l1": 0.055226809925343685,
+    "f3_reliability_l2": 0.08953514932660497,
+    "f3_reliability_l3": 0.15389050119492156,
+    "f3_reliability_l4": 0.2529577928844752,
+    "f3_reliability_l5": 0.44838974666865467,
+    "f4_service_l1": 0.12600539016351917,
+    "f4_service_l2": 0.41606063128852294,
+    "f4_service_l3": 0.457933978547958,
+    "f5_connectivity_l1": 0.2,
+    "f5_connectivity_l2": 0.8,
+    "f6_usability_l1": 0.08274775838336688,
+    "f6_usability_l2": 0.15401093206273545,
+    "f6_usability_l3": 0.2667547592536964,
+    "f6_usability_l4": 0.4964865503002012,
+    "brand_alpha": 0.2427741726264683,
+    "brand_beta": 0.43874245761999814,
+    "brand_gamma": 0.09911214094353443,
+    "brand_delta": 0.21937122880999907
+  },
+  "level_crs": {
+    "f1_performance": 0.003835657950578974,
+    "f2_capacity": 0.0031849983307235905,
+    "f3_reliability": 0.007623867195112003,
+    "f4_service": 0.00793337302955036,
+    "f5_connectivity": 0.0,
+    "f6_usability": 0.003835657950578974,
+    "f7_brand": 0.007627513477776028
+  },
+  "benchmark_value_indices": [
+    0.015497884557382232,
+    0.13017241739538207,
+    0.18361040170882667,
+    0.33936514936861867,
+    0.40374224221706234,
+    0.5646327313953046,
+    0.7281316421628816,
+    0.8165881455238344,
+    0.9853380751868042
+  ],
+  "target_value_indices": [
+    0.833708860770414,
+    0.3859109322200407
+  ],
+  "solver_success": true,
+  "all_runs": [
+    {
+      "b": 8199.00756984562,
+      "m": 22282.57726551265,
+      "weighted_sse": 508459.0547499744,
+      "converged": true,
+      "degenerate": false,
+      "suspicious_m_low": false,
+      "suspicious_b_high": false,
+      "constraint_regime": "UNIVERSAL_ONLY",
+      "init_strategy": "OUTSIDE_IN",
+      "r_squared": 0.9754,
+      "rse": 0.002157,
+      "target_point_estimates": [
+        19940.6,
+        13634.01
+      ]
+    },
+    {
+      "b": 8199.00756984562,
+      "m": 22282.57726551265,
+      "weighted_sse": 508459.0547499744,
+      "converged": true,
+      "degenerate": false,
+      "suspicious_m_low": false,
+      "suspicious_b_high": false,
+      "constraint_regime": "B_ANCHORED",
+      "init_strategy": "OUTSIDE_IN",
+      "r_squared": 0.9754,
+      "rse": 0.002157,
+      "target_point_estimates": [
+        19940.6,
+        13634.01
+      ]
+    },
+    {
+      "b": 8199.00756984562,
+      "m": 22282.57726551265,
+      "weighted_sse": 508459.0547499744,
+      "converged": true,
+      "degenerate": false,
+      "suspicious_m_low": false,
+      "suspicious_b_high": false,
+      "constraint_regime": "M_ANCHORED",
+      "init_strategy": "OUTSIDE_IN",
+      "r_squared": 0.9754,
+      "rse": 0.002157,
+      "target_point_estimates": [
+        19940.6,
+        13634.01
+      ]
+    },
+    {
+      "b": 8199.00756984562,
+      "m": 22282.57726551265,
+      "weighted_sse": 508459.0547499744,
+      "converged": true,
+      "degenerate": false,
+      "suspicious_m_low": false,
+      "suspicious_b_high": false,
+      "constraint_regime": "BOTH_ANCHORED",
+      "init_strategy": "OUTSIDE_IN",
+      "r_squared": 0.9754,
+      "rse": 0.002157,
+      "target_point_estimates": [
+        19940.6,
+        13634.01
+      ]
+    }
+  ],
+  "solver": {
+    "b": 8199.00756984562,
+    "m": 22282.57726551265,
+    "weighted_sse": 508459.0547499744,
+    "r_squared_weighted": 0.9754444487815204,
+    "rse": 0.002157137783263694,
+    "constraint_regime": "UNIVERSAL_ONLY",
+    "init_strategy": "OUTSIDE_IN",
+    "near_equivalent_flag": false,
+    "suspicious_m_low": false,
+    "suspicious_b_high": false,
+    "benchmark_residuals": [
+      682.7268928550857,
+      -832.2998826869425,
+      165.1025408386995,
+      -1328.4803032590135,
+      -85.13957719449718,
+      348.9480050937673,
+      -653.7002998670505,
+      1150.5163700139674,
+      -526.0850255333753
+    ],
+    "outlier_flags": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "target_recommendations": [
+    {
+      "point_estimate": 19940.6044,
+      "range_low": 19196.8504,
+      "range_high": 20684.3584
+    },
+    {
+      "point_estimate": 13634.0111,
+      "range_low": 12890.2571,
+      "range_high": 14377.7651
+    }
+  ],
+  "sensitivity": [
+    {
+      "excluded_attribute_id": "f1_performance",
+      "renormalized_weights": {
+        "f2_capacity": 0.257094508926228,
+        "f3_reliability": 0.21975189141313517,
+        "f4_service": 0.16327502783348086,
+        "f5_connectivity": 0.139559558610547,
+        "f6_usability": 0.12640239480779805,
+        "f7_brand": 0.0939166184088109
+      },
+      "weighted_sse": 1641874.1386111337,
+      "r_squared_weighted": 0.9207072346763734,
+      "point_estimate": 18903.289,
+      "delta_from_full_model": -1037.3154,
+      "flagged": true
+    },
+    {
+      "excluded_attribute_id": "f2_capacity",
+      "renormalized_weights": {
+        "f1_performance": 0.3527170400471602,
+        "f3_reliability": 0.19146668915252948,
+        "f4_service": 0.1422592033203091,
+        "f5_connectivity": 0.12159625318771039,
+        "f6_usability": 0.11013260399793479,
+        "f7_brand": 0.08182821029435607
+      },
+      "weighted_sse": 156097.67507125903,
+      "r_squared_weighted": 0.9924614097841512,
+      "point_estimate": 19179.5724,
+      "delta_from_full_model": -761.032,
+      "flagged": false
+    },
+    {
+      "excluded_attribute_id": "f3_reliability",
+      "renormalized_weights": {
+        "f1_performance": 0.34160262622071275,
+        "f2_capacity": 0.2169442612256704,
+        "f4_service": 0.1377764948690496,
+        "f5_connectivity": 0.1177646518636207,
+        "f6_usability": 0.10666223200668185,
+        "f7_brand": 0.07924973381426473
+      },
+      "weighted_sse": 432171.7542143419,
+      "r_squared_weighted": 0.9791286721189205,
+      "point_estimate": 20381.058,
+      "delta_from_full_model": 440.4536,
+      "flagged": false
+    },
+    {
+      "excluded_attribute_id": "f4_service",
+      "renormalized_weights": {
+        "f1_performance": 0.32606344783875807,
+        "f2_capacity": 0.20707567323668652,
+        "f3_reliability": 0.17699822158577377,
+        "f5_connectivity": 0.11240764992062265,
+        "f6_usability": 0.10181026857740078,
+        "f7_brand": 0.07564473884075823
+      },
+      "weighted_sse": 897724.8019867127,
+      "r_squared_weighted": 0.9566452261015905,
+      "point_estimate": 19691.2225,
+      "delta_from_full_model": -249.3819,
+      "flagged": false
+    },
+    {
+      "excluded_attribute_id": "f5_connectivity",
+      "renormalized_weights": {
+        "f1_performance": 0.3199518795529808,
+        "f2_capacity": 0.2031943515930071,
+        "f3_reliability": 0.17368065647734887,
+        "f4_service": 0.12904423182944832,
+        "f6_usability": 0.0999019884168113,
+        "f7_brand": 0.07422689213040358
+      },
+      "weighted_sse": 871114.3459603323,
+      "r_squared_weighted": 0.9579303530155446,
+      "point_estimate": 19978.266,
+      "delta_from_full_model": 37.6616,
+      "flagged": false
+    },
+    {
+      "excluded_attribute_id": "f6_usability",
+      "renormalized_weights": {
+        "f1_performance": 0.31665902174398747,
+        "f2_capacity": 0.20110313053713713,
+        "f3_reliability": 0.1718931823523287,
+        "f4_service": 0.1277161436585683,
+        "f5_connectivity": 0.1091655525829042,
+        "f7_brand": 0.07346296912507418
+      },
+      "weighted_sse": 677420.9283681137,
+      "r_squared_weighted": 0.9672845942114398,
+      "point_estimate": 20381.436,
+      "delta_from_full_model": 440.8316,
+      "flagged": false
+    },
+    {
+      "excluded_attribute_id": "f7_brand",
+      "renormalized_weights": {
+        "f1_performance": 0.3088118485843043,
+        "f2_capacity": 0.19611956468264796,
+        "f3_reliability": 0.1676334724616746,
+        "f4_service": 0.1245511913731222,
+        "f5_connectivity": 0.1064603051862798,
+        "f6_usability": 0.09642361771197112
+      },
+      "weighted_sse": 476934.69108252163,
+      "r_squared_weighted": 0.9769668882374305,
+      "point_estimate": 20444.0752,
+      "delta_from_full_model": 503.4708,
+      "flagged": false
+    }
+  ],
+  "generated_at": "2026-06-10T22:35:15.464692+00:00"
+}

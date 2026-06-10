@@ -1,0 +1,192 @@
+{
+  "_description": "5 benchmarks clustered in a narrow Value Index band with prices uncorrelated to V. Ill-conditioned fit; locks near-equivalent flag and flat-valley solver behavior.",
+  "_provenance": "Authored by author_fixtures.py (deterministic). Do not edit by hand.",
+  "attribute_ids": [
+    "f1",
+    "f2",
+    "f3",
+    "f4"
+  ],
+  "attribute_matrix": [
+    [
+      1.0,
+      1.0,
+      1.0,
+      2.0
+    ],
+    [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    [
+      0.5,
+      1.0,
+      1.0,
+      1.0
+    ]
+  ],
+  "attribute_levels": {
+    "f1": [
+      "f1_l1",
+      "f1_l2",
+      "f1_l3"
+    ],
+    "f2": [
+      "f2_l1",
+      "f2_l2",
+      "f2_l3"
+    ],
+    "f3": [
+      "f3_l1",
+      "f3_l2",
+      "f3_l3"
+    ],
+    "f4": [
+      "f4_l1",
+      "f4_l2",
+      "f4_l3"
+    ]
+  },
+  "level_matrices": {
+    "f1": [
+      [
+        1.0,
+        0.5,
+        0.25
+      ],
+      [
+        2.0,
+        1.0,
+        0.5
+      ],
+      [
+        4.0,
+        2.0,
+        1.0
+      ]
+    ],
+    "f2": [
+      [
+        1.0,
+        0.5,
+        0.25
+      ],
+      [
+        2.0,
+        1.0,
+        0.5
+      ],
+      [
+        4.0,
+        2.0,
+        1.0
+      ]
+    ],
+    "f3": [
+      [
+        1.0,
+        0.5,
+        0.25
+      ],
+      [
+        2.0,
+        1.0,
+        0.5
+      ],
+      [
+        4.0,
+        2.0,
+        1.0
+      ]
+    ],
+    "f4": [
+      [
+        1.0,
+        0.5,
+        0.25
+      ],
+      [
+        2.0,
+        1.0,
+        0.5
+      ],
+      [
+        4.0,
+        2.0,
+        1.0
+      ]
+    ]
+  },
+  "benchmark_ids": [
+    "bench_1",
+    "bench_2",
+    "bench_3",
+    "bench_4",
+    "bench_5"
+  ],
+  "benchmark_assignments": [
+    {
+      "f1": "f1_l2",
+      "f2": "f2_l2",
+      "f3": "f3_l2",
+      "f4": "f4_l2"
+    },
+    {
+      "f1": "f1_l1",
+      "f2": "f2_l2",
+      "f3": "f3_l2",
+      "f4": "f4_l2"
+    },
+    {
+      "f1": "f1_l2",
+      "f2": "f2_l1",
+      "f3": "f3_l2",
+      "f4": "f4_l2"
+    },
+    {
+      "f1": "f1_l2",
+      "f2": "f2_l2",
+      "f3": "f3_l1",
+      "f4": "f4_l2"
+    },
+    {
+      "f1": "f1_l2",
+      "f2": "f2_l2",
+      "f3": "f3_l2",
+      "f4": "f4_l1"
+    }
+  ],
+  "market_prices": [
+    128.0,
+    96.0,
+    118.0,
+    102.0,
+    124.0
+  ],
+  "market_share_weights": [
+    22.0,
+    20.0,
+    19.0,
+    20.0,
+    19.0
+  ],
+  "target_ids": [
+    "target_1"
+  ],
+  "target_assignments": [
+    {
+      "f1": "f1_l3",
+      "f2": "f2_l2",
+      "f3": "f3_l2",
+      "f4": "f4_l2"
+    }
+  ]
+}

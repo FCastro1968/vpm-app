@@ -1,0 +1,130 @@
+{
+  "_description": "3 benchmarks, 3 factors (2-3 levels). Hand-verifiable GMM weights (4/7, 2/7, 1/7), CR = 0 on the attribute matrix. f3 utility order contradicts display order.",
+  "_provenance": "Authored by author_fixtures.py (deterministic). Do not edit by hand.",
+  "attribute_ids": [
+    "f1",
+    "f2",
+    "f3"
+  ],
+  "attribute_matrix": [
+    [
+      1.0,
+      2.0,
+      4.0
+    ],
+    [
+      0.5,
+      1.0,
+      2.0
+    ],
+    [
+      0.25,
+      0.5,
+      1.0
+    ]
+  ],
+  "attribute_levels": {
+    "f1": [
+      "f1_l1",
+      "f1_l2",
+      "f1_l3"
+    ],
+    "f2": [
+      "f2_l1",
+      "f2_l2"
+    ],
+    "f3": [
+      "f3_l1",
+      "f3_l2",
+      "f3_l3"
+    ]
+  },
+  "level_matrices": {
+    "f1": [
+      [
+        1.0,
+        0.3333333333333333,
+        0.2
+      ],
+      [
+        3.0,
+        1.0,
+        0.3333333333333333
+      ],
+      [
+        5.0,
+        3.0,
+        1.0
+      ]
+    ],
+    "f2": [
+      [
+        1.0,
+        0.25
+      ],
+      [
+        4.0,
+        1.0
+      ]
+    ],
+    "f3": [
+      [
+        1.0,
+        0.5,
+        3.0
+      ],
+      [
+        2.0,
+        1.0,
+        6.0
+      ],
+      [
+        0.3333333333333333,
+        0.16666666666666666,
+        1.0
+      ]
+    ]
+  },
+  "benchmark_ids": [
+    "bench_a",
+    "bench_b",
+    "bench_c"
+  ],
+  "benchmark_assignments": [
+    {
+      "f1": "f1_l1",
+      "f2": "f2_l1",
+      "f3": "f3_l1"
+    },
+    {
+      "f1": "f1_l2",
+      "f2": "f2_l2",
+      "f3": "f3_l1"
+    },
+    {
+      "f1": "f1_l3",
+      "f2": "f2_l2",
+      "f3": "f3_l3"
+    }
+  ],
+  "market_prices": [
+    100.0,
+    150.0,
+    210.0
+  ],
+  "market_share_weights": [
+    45.0,
+    35.0,
+    20.0
+  ],
+  "target_ids": [
+    "target_1"
+  ],
+  "target_assignments": [
+    {
+      "f1": "f1_l3",
+      "f2": "f2_l1",
+      "f3": "f3_l2"
+    }
+  ]
+}

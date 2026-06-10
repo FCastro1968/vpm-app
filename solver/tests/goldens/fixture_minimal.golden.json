@@ -1,0 +1,167 @@
+{
+  "solver_version": "2.0.0",
+  "attribute_weights": {
+    "f1": 0.5714285714285714,
+    "f2": 0.2857142857142857,
+    "f3": 0.14285714285714285
+  },
+  "attribute_cr": 0.0,
+  "level_utilities": {
+    "f1_l1": 0.10472943388074786,
+    "f1_l2": 0.258284994374495,
+    "f1_l3": 0.6369855717447572,
+    "f2_l1": 0.2,
+    "f2_l2": 0.8,
+    "f3_l1": 0.3,
+    "f3_l2": 0.6,
+    "f3_l3": 0.09999999999999999
+  },
+  "level_crs": {
+    "f1": 0.03319921599842283,
+    "f2": 0.0,
+    "f3": 0.0
+  },
+  "benchmark_value_indices": [
+    0.05714285714285714,
+    0.507713925758676,
+    0.8571428571428571
+  ],
+  "target_value_indices": [
+    0.7142857142857142
+  ],
+  "solver_success": true,
+  "all_runs": [
+    {
+      "b": 90.08274873559442,
+      "m": 221.91737220171365,
+      "weighted_sse": 29.35734844470868,
+      "converged": true,
+      "degenerate": false,
+      "suspicious_m_low": false,
+      "suspicious_b_high": false,
+      "constraint_regime": "UNIVERSAL_ONLY",
+      "init_strategy": "OUTSIDE_IN",
+      "r_squared": 0.9831,
+      "rse": 0.001385,
+      "target_point_estimates": [
+        184.25
+      ]
+    },
+    {
+      "b": 90.08274873559442,
+      "m": 221.91737220171365,
+      "weighted_sse": 29.35734844470868,
+      "converged": true,
+      "degenerate": false,
+      "suspicious_m_low": false,
+      "suspicious_b_high": false,
+      "constraint_regime": "B_ANCHORED",
+      "init_strategy": "OUTSIDE_IN",
+      "r_squared": 0.9831,
+      "rse": 0.001385,
+      "target_point_estimates": [
+        184.25
+      ]
+    },
+    {
+      "b": 90.08274873559442,
+      "m": 221.91737220171365,
+      "weighted_sse": 29.35734844470868,
+      "converged": true,
+      "degenerate": false,
+      "suspicious_m_low": false,
+      "suspicious_b_high": false,
+      "constraint_regime": "M_ANCHORED",
+      "init_strategy": "OUTSIDE_IN",
+      "r_squared": 0.9831,
+      "rse": 0.001385,
+      "target_point_estimates": [
+        184.25
+      ]
+    },
+    {
+      "b": 90.08274873559442,
+      "m": 221.91737220171365,
+      "weighted_sse": 29.35734844470868,
+      "converged": true,
+      "degenerate": false,
+      "suspicious_m_low": false,
+      "suspicious_b_high": false,
+      "constraint_regime": "BOTH_ANCHORED",
+      "init_strategy": "OUTSIDE_IN",
+      "r_squared": 0.9831,
+      "rse": 0.001385,
+      "target_point_estimates": [
+        184.25
+      ]
+    }
+  ],
+  "solver": {
+    "b": 90.08274873559442,
+    "m": 221.91737220171365,
+    "weighted_sse": 29.35734844470868,
+    "r_squared_weighted": 0.9830768995851226,
+    "rse": 0.0013851072632558943,
+    "constraint_regime": "UNIVERSAL_ONLY",
+    "init_strategy": "OUTSIDE_IN",
+    "near_equivalent_flag": false,
+    "suspicious_m_low": false,
+    "suspicious_b_high": false,
+    "benchmark_residuals": [
+      2.38384420919877,
+      -7.017022966494693,
+      6.916145436303395
+    ],
+    "outlier_flags": [
+      false,
+      false,
+      false
+    ]
+  },
+  "target_recommendations": [
+    {
+      "point_estimate": 184.2503,
+      "range_low": 178.4475,
+      "range_high": 190.0531
+    }
+  ],
+  "sensitivity": [
+    {
+      "excluded_attribute_id": "f1",
+      "renormalized_weights": {
+        "f2": 0.6666666666666666,
+        "f3": 0.3333333333333333
+      },
+      "weighted_sse": 708.3524552549527,
+      "r_squared_weighted": 0.5916688541548046,
+      "point_estimate": 125.0872,
+      "delta_from_full_model": -59.1631,
+      "flagged": true
+    },
+    {
+      "excluded_attribute_id": "f2",
+      "renormalized_weights": {
+        "f1": 0.8,
+        "f3": 0.2
+      },
+      "weighted_sse": 49.40801285200812,
+      "r_squared_weighted": 0.9715186552229381,
+      "point_estimate": 246.0149,
+      "delta_from_full_model": 61.7646,
+      "flagged": true
+    },
+    {
+      "excluded_attribute_id": "f3",
+      "renormalized_weights": {
+        "f1": 0.6666666666666666,
+        "f2": 0.3333333333333333
+      },
+      "weighted_sse": 12.915601334008016,
+      "r_squared_weighted": 0.9925547765764473,
+      "point_estimate": 169.8605,
+      "delta_from_full_model": -14.3898,
+      "flagged": true
+    }
+  ],
+  "generated_at": "2026-06-10T22:35:15.209123+00:00"
+}

@@ -1,5 +1,5 @@
 {
-  "solver_version": "2.0.0",
+  "solver_version": "2.1.0",
   "attribute_weights": {
     "f1": 0.5714285714285714,
     "f2": 0.2857142857142857,
@@ -125,6 +125,30 @@
       "range_high": 190.0531
     }
   ],
+  "loo": {
+    "skipped": true,
+    "reason": "Requires at least 4 included reference products."
+  },
+  "weight_mode_solutions": {
+    "market_share": {
+      "b": 90.08274873559442,
+      "m": 221.91737220171365,
+      "weighted_sse": 29.35734844470868,
+      "r_squared_weighted": 0.9830768995851226
+    },
+    "sqrt_share": {
+      "b": 89.4365095862781,
+      "m": 223.55032050730156,
+      "weighted_sse": 31.138813773973315,
+      "r_squared_weighted": 0.9836733691358719
+    },
+    "equal": {
+      "b": 88.75213312345006,
+      "m": 224.99943009406903,
+      "weighted_sse": 31.584316256573125,
+      "r_squared_weighted": 0.9843813820709254
+    }
+  },
   "sensitivity": [
     {
       "excluded_attribute_id": "f1",
@@ -163,5 +187,5 @@
       "flagged": true
     }
   ],
-  "generated_at": "2026-06-10T22:35:15.209123+00:00"
+  "generated_at": "2026-06-10T23:26:13.048067+00:00"
 }

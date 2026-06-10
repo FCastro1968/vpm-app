@@ -19,6 +19,7 @@ from solver import (  # noqa: E402
     consistency_ratio,
     build_value_index_scores,
     run_solver,
+    run_loo_cv,
     price_recommendation,
     run_sensitivity_analysis,
 )
@@ -98,6 +99,23 @@ def run_pipeline(fx):
                              result['benchmark_residuals'])
         for t_vi in target_scores
     ]
+
+    # Leave-one-out cross-validation (Predictive Error)
+    out['loo'] = run_loo_cv(bench_scores, fx['market_prices'],
+                            fx['market_share_weights'],
+                            result['b'], result['m'])
+
+    # Alternate weighting modes (Market Influence setting): lock the winning
+    # solution under each mode so a weight-formula change fails loudly.
+    out['weight_mode_solutions'] = {}
+    for mode in ('market_share', 'sqrt_share', 'equal'):
+        r = run_solver(bench_scores, fx['market_prices'],
+                       fx['market_share_weights'], weight_mode=mode)
+        out['weight_mode_solutions'][mode] = {
+            'b': r['b'], 'm': r['m'],
+            'weighted_sse': r['weighted_sse'],
+            'r_squared_weighted': r['r_squared_weighted'],
+        } if r['success'] else {'success': False}
 
     # Sensitivity, exactly as main.py invokes it (full-model PE = first target's)
     if out['target_recommendations']:

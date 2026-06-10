@@ -1,5 +1,5 @@
 {
-  "solver_version": "2.0.0",
+  "solver_version": "2.1.0",
   "attribute_weights": {
     "f1": 0.2950810335453223,
     "f2": 0.2481325833176226,
@@ -137,6 +137,74 @@
       "range_high": 191.8754
     }
   ],
+  "loo": {
+    "skipped": false,
+    "loo_rmse": 6.3054,
+    "loo_nrmse_pct": 5.5506,
+    "residuals": [
+      -18.6921,
+      -14.1673,
+      11.7013,
+      -9.39,
+      14.1671
+    ],
+    "predictions": [
+      146.6921,
+      110.1673,
+      106.2987,
+      111.39,
+      109.8329
+    ],
+    "stability": 1.0,
+    "max_influence_index": 0,
+    "refits": [
+      {
+        "b": 0.0,
+        "m": 440.0762,
+        "success": true
+      },
+      {
+        "b": 64.85,
+        "m": 257.7119,
+        "success": true
+      },
+      {
+        "b": 31.8542,
+        "m": 328.8927,
+        "success": true
+      },
+      {
+        "b": 51.0699,
+        "m": 291.751,
+        "success": true
+      },
+      {
+        "b": 37.0904,
+        "m": 312.8577,
+        "success": true
+      }
+    ]
+  },
+  "weight_mode_solutions": {
+    "market_share": {
+      "b": 42.271202978634534,
+      "m": 308.75758687768314,
+      "weighted_sse": 67.91149264633117,
+      "r_squared_weighted": 0.5720557969610947
+    },
+    "sqrt_share": {
+      "b": 42.15563594038944,
+      "m": 309.569142878566,
+      "weighted_sse": 68.8597230973973,
+      "r_squared_weighted": 0.5621608910015581
+    },
+    "equal": {
+      "b": 42.00808253723934,
+      "m": 310.4777497253884,
+      "weighted_sse": 69.75090614869617,
+      "r_squared_weighted": 0.5524197500725349
+    }
+  },
   "sensitivity": [
     {
       "excluded_attribute_id": "f1",
@@ -191,5 +259,5 @@
       "flagged": false
     }
   ],
-  "generated_at": "2026-06-10T22:35:15.831929+00:00"
+  "generated_at": "2026-06-10T23:26:14.334613+00:00"
 }

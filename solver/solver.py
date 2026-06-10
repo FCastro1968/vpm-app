@@ -27,7 +27,7 @@ import warnings
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-SOLVER_VERSION = "2.0.0"  # 2.0.0 = 8->4 run collapse after convexity verification
+SOLVER_VERSION = "2.1.0"  # 2.1.0 = LOO cross-validation + weight modes; 2.0.0 = 8->4 run collapse
 
 
 def to_python(obj):
@@ -191,6 +191,24 @@ def build_value_index_scores(attribute_weights, level_utilities, attribute_level
     return bench_scores, target_scores, raw_base, raw_max
 
 
+def compute_observation_weights(market_share_weights, weight_mode='market_share'):
+    """Observation weight computation, isolated in one function (Market
+    Influence setting). Scale-invariant in the input shares for all modes.
+
+      market_share (default): w_i = share_i / sum(share)
+      sqrt_share ("Balanced"): w_i = sqrt(share_i) / sum(sqrt(share))
+      equal:                   w_i = 1/n
+    """
+    s = np.array(market_share_weights, dtype=float)
+    if weight_mode == 'equal':
+        w = np.ones_like(s)
+    elif weight_mode == 'sqrt_share':
+        w = np.sqrt(np.maximum(s, 0.0))
+    else:  # 'market_share'
+        w = s
+    return w / w.sum()
+
+
 def weighted_sse_fn(params, v, p, w):
     b, m = params
     predicted = b + v * (m - b)
@@ -220,11 +238,11 @@ def run_single_solver(v, p, w, b_init, m_init, constraints, epsilon):
     }
 
 
-def run_solver(value_scores, market_prices, market_share_weights, target_value_scores=None):
+def run_solver(value_scores, market_prices, market_share_weights, target_value_scores=None,
+               weight_mode='market_share'):
     v = np.array(value_scores, dtype=float)
     p = np.array(market_prices, dtype=float)
-    w = np.array(market_share_weights, dtype=float)
-    w = w / w.sum()
+    w = compute_observation_weights(market_share_weights, weight_mode)
 
     price_min  = float(p.min())
     price_max  = float(p.max())
@@ -343,6 +361,81 @@ def run_solver(value_scores, market_prices, market_share_weights, target_value_s
     }
 
 
+def run_loo_cv(value_scores, market_prices, market_share_weights, b_full, m_full,
+               weight_mode='market_share'):
+    """Leave-one-out cross-validation (shared utility — also intended to power
+    the Benchmark Outlier Review ranking, which should rank by |LOO residual|).
+
+    For each benchmark i: exclude it, renormalize the remaining market-share
+    weights (run_solver does this internally), run the full multi-regime
+    solve, and predict the held-out benchmark's price from the refit model.
+
+    loo_rmse mirrors the in-sample metric semantics — sqrt(weighted SSE / n)
+    with weights summing to 1 — so the two numbers are directly comparable.
+
+    stability = max over i of the relative movement of B or M when benchmark i
+    is excluded. Denominators are guarded with 1% of mean price so a B near
+    zero cannot explode the ratio.
+
+    Skipped (with a reason) when exclusion would drop the benchmark count
+    below 3, or when no held-out refit converges.
+    """
+    v = np.array(value_scores, dtype=float)
+    p = np.array(market_prices, dtype=float)
+    raw_shares = np.array(market_share_weights, dtype=float)
+    w = compute_observation_weights(market_share_weights, weight_mode)
+    n = len(v)
+    if n < 4:
+        return {'skipped': True,
+                'reason': 'Requires at least 4 included reference products.'}
+
+    price_mean = float(p.mean())
+    residuals, predictions, refits = [], [], []
+    for i in range(n):
+        keep = [j for j in range(n) if j != i]
+        sub = run_solver(v[keep].tolist(), p[keep].tolist(),
+                         raw_shares[keep].tolist(), weight_mode=weight_mode)
+        if not sub['success']:
+            residuals.append(None)
+            predictions.append(None)
+            refits.append({'b': None, 'm': None, 'success': False})
+            continue
+        pred = float(sub['b'] + v[i] * (sub['m'] - sub['b']))
+        predictions.append(round(pred, 4))
+        residuals.append(round(float(p[i]) - pred, 4))
+        refits.append({'b': round(sub['b'], 4), 'm': round(sub['m'], 4), 'success': True})
+
+    ok = [i for i in range(n) if residuals[i] is not None]
+    if not ok:
+        return {'skipped': True, 'reason': 'No held-out refit converged.'}
+
+    w_ok = np.array([w[i] for i in ok])
+    w_ok = w_ok / w_ok.sum()
+    sse = float(sum(wi * (float(p[i]) - predictions[i]) ** 2
+                    for wi, i in zip(w_ok, ok)))
+    loo_rmse = float(np.sqrt(sse / len(ok)))
+
+    denom_b = max(abs(b_full), 0.01 * price_mean)
+    denom_m = max(abs(m_full), 0.01 * price_mean)
+    influence = [
+        (max(abs(refits[i]['b'] - b_full) / denom_b,
+             abs(refits[i]['m'] - m_full) / denom_m), i)
+        for i in ok
+    ]
+    stability, max_influence_index = max(influence)
+
+    return {
+        'skipped': False,
+        'loo_rmse': round(loo_rmse, 4),
+        'loo_nrmse_pct': round(loo_rmse / price_mean * 100, 4) if price_mean > 0 else None,
+        'residuals': residuals,
+        'predictions': predictions,
+        'stability': round(float(stability), 6),
+        'max_influence_index': int(max_influence_index),
+        'refits': refits,
+    }
+
+
 def price_recommendation(b, m, target_value_index, benchmark_residuals):
     point_estimate = float(b + target_value_index * (m - b))
     residual_std = float(np.std(np.array(benchmark_residuals)))
@@ -355,7 +448,8 @@ def price_recommendation(b, m, target_value_index, benchmark_residuals):
 
 def run_sensitivity_analysis(attribute_ids, attribute_weights, level_utilities,
                               attribute_levels, benchmark_assignments, target_assignments,
-                              market_prices, market_share_weights, full_model_point_estimate):
+                              market_prices, market_share_weights, full_model_point_estimate,
+                              weight_mode='market_share'):
     results = []
     for excluded_attr in attribute_ids:
         remaining = {k: v for k, v in attribute_weights.items() if k != excluded_attr}
@@ -369,7 +463,8 @@ def run_sensitivity_analysis(attribute_ids, attribute_weights, level_utilities,
             renormalized, level_utilities, remaining_levels,
             benchmark_assignments, target_assignments
         )
-        solver_result = run_solver(bench_scores, market_prices, market_share_weights)
+        solver_result = run_solver(bench_scores, market_prices, market_share_weights,
+                                   weight_mode=weight_mode)
 
         if not solver_result['success']:
             results.append({

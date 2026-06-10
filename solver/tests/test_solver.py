@@ -205,3 +205,67 @@ def test_price_recommendations_match_golden(name, pipelines, goldens):
 def test_sensitivity_matches_golden(name, pipelines, goldens):
     assert_matches(pipelines[name]['sensitivity'],
                    goldens[name]['sensitivity'], TOL_GOLDEN)
+
+
+# ─── Leave-one-out cross-validation (Predictive Error) ──────────────────────
+
+@pytest.mark.parametrize('name', FIXTURE_NAMES)
+def test_loo_matches_golden(name, pipelines, goldens):
+    assert_matches(pipelines[name]['loo'], goldens[name]['loo'], TOL_GOLDEN)
+
+
+def test_loo_skipped_below_four_benchmarks(pipelines):
+    """fixture_minimal has 3 benchmarks — exclusion would drop below 3."""
+    assert pipelines['fixture_minimal']['loo']['skipped'] is True
+
+
+def test_loo_internal_consistency(pipelines):
+    """Each held-out prediction must equal B_i + V_i * (M_i - B_i) computed
+    from that exclusion's own refit parameters."""
+    pipe = pipelines['fixture_standard']
+    loo = pipe['loo']
+    assert loo['skipped'] is False
+    v = pipe['benchmark_value_indices']
+    for i, refit in enumerate(loo['refits']):
+        if not refit['success']:
+            continue
+        expected = refit['b'] + v[i] * (refit['m'] - refit['b'])
+        assert abs(loo['predictions'][i] - expected) < 1e-3, (
+            f'prediction[{i}] inconsistent with its own refit parameters')
+
+
+def test_loo_rmse_at_least_in_sample(pipelines, fixtures):
+    """Held-out error should not be materially smaller than in-sample error —
+    LOO is the honest (pessimistic) estimate. Allow 1% slack for numerics."""
+    pipe = pipelines['fixture_standard']
+    n = len(fixtures['fixture_standard']['benchmark_ids'])
+    in_sample_rmse = (pipe['solver']['weighted_sse'] / n) ** 0.5
+    assert pipe['loo']['loo_rmse'] >= in_sample_rmse * 0.99
+
+
+# ─── Weighting modes (Market Influence setting) ──────────────────────────────
+
+@pytest.mark.parametrize('name', FIXTURE_NAMES)
+def test_weight_modes_match_golden(name, pipelines, goldens):
+    assert_matches(pipelines[name]['weight_mode_solutions'],
+                   goldens[name]['weight_mode_solutions'], TOL_GOLDEN)
+
+
+def test_weight_modes_diverge_on_concentrated(pipelines):
+    """On the 55%-share fixture the three modes must produce materially
+    different solutions — that is the point of the setting."""
+    sols = pipelines['fixture_concentrated']['weight_mode_solutions']
+    b_vals = [sols[m]['b'] for m in ('market_share', 'sqrt_share', 'equal')]
+    assert abs(b_vals[0] - b_vals[2]) > 1.0, 'market_share and equal should diverge'
+    assert abs(b_vals[0] - b_vals[1]) > 0.1, 'market_share and sqrt_share should diverge'
+
+
+def test_weight_mode_equal_ignores_shares(fixtures, pipelines):
+    """equal mode must produce the same solution regardless of the shares."""
+    from solver import run_solver as rs
+    fx = fixtures['fixture_concentrated']
+    v = pipelines['fixture_concentrated']['benchmark_value_indices']
+    r1 = rs(v, fx['market_prices'], fx['market_share_weights'], weight_mode='equal')
+    r2 = rs(v, fx['market_prices'], [1.0] * len(v), weight_mode='equal')
+    assert abs(r1['b'] - r2['b']) < 1e-9 * max(1.0, abs(r2['b']))
+    assert abs(r1['m'] - r2['m']) < 1e-9 * max(1.0, abs(r2['m']))

@@ -18,6 +18,7 @@ from solver import (
     aggregate_pairwise_matrices,
     build_value_index_scores,
     run_solver,
+    run_loo_cv,
     price_recommendation,
     run_sensitivity_analysis,
 )
@@ -69,6 +70,8 @@ class SolverRequest(BaseModel):
 
     # Options
     run_sensitivity: bool = True
+    run_loo: bool = False  # leave-one-out cross-validation (Predictive Error)
+    weight_mode: str = 'market_share'  # 'market_share' | 'sqrt_share' | 'equal'
 
 
 class TargetResult(BaseModel):
@@ -107,6 +110,9 @@ class SolverResponse(BaseModel):
 
     # Sensitivity analysis
     sensitivity: Optional[list[dict]] = None
+
+    # Leave-one-out cross-validation (Predictive Error)
+    loo: Optional[dict] = None
 
     # All solver runs, one per constraint regime (for diagnostics panel)
     all_runs: Optional[list[dict]] = None
@@ -192,7 +198,8 @@ def solve(req: SolverRequest):
         )
 
         # Run solver
-        result = run_solver(bench_scores, req.market_prices, req.market_share_weights, target_value_scores=target_scores)
+        result = run_solver(bench_scores, req.market_prices, req.market_share_weights,
+                            target_value_scores=target_scores, weight_mode=req.weight_mode)
 
         if not result['success']:
             return SolverResponse(success=False, error=result.get('error'))
@@ -212,6 +219,13 @@ def solve(req: SolverRequest):
                 range_high=rec['range_high']
             ))
 
+        # Leave-one-out cross-validation
+        loo = None
+        if req.run_loo:
+            loo = run_loo_cv(bench_scores, req.market_prices,
+                             req.market_share_weights, b, m,
+                             weight_mode=req.weight_mode)
+
         # Sensitivity analysis
         sensitivity = None
         if req.run_sensitivity and target_results:
@@ -225,7 +239,8 @@ def solve(req: SolverRequest):
                 target_assignments=req.target_assignments,
                 market_prices=req.market_prices,
                 market_share_weights=req.market_share_weights,
-                full_model_point_estimate=full_model_pe
+                full_model_point_estimate=full_model_pe,
+                weight_mode=req.weight_mode
             )
 
         return SolverResponse(
@@ -245,6 +260,7 @@ def solve(req: SolverRequest):
             outlier_flags=result['outlier_flags'],
             target_results=target_results,
             sensitivity=sensitivity,
+            loo=loo,
             all_runs=result['all_runs']
         )
 

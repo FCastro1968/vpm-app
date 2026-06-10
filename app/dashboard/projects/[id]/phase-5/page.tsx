@@ -36,6 +36,18 @@ interface TargetResult {
   range_high: number
 }
 
+interface LooResult {
+  skipped: boolean
+  reason?: string
+  loo_rmse?: number
+  loo_nrmse_pct?: number
+  residuals?: (number | null)[]
+  predictions?: (number | null)[]
+  stability?: number
+  max_influence_index?: number
+  refits?: { b: number | null; m: number | null; success: boolean }[]
+}
+
 interface SolverResult {
   success: boolean
   error?: string
@@ -54,7 +66,13 @@ interface SolverResult {
   outlier_flags: boolean[]
   target_results: TargetResult[]
   sensitivity: SensitivityRow[]
+  loo?: LooResult | null
   all_runs: any[]
+}
+
+interface ModeCheckRow {
+  label: string
+  estimates: number[]
 }
 
 interface SensitivityRow {
@@ -106,6 +124,18 @@ function formatRse(rse: number) {
   return (rse * 100).toFixed(1) + '%'
 }
 
+function formatWholeDollars(val: number) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0
+  }).format(val)
+}
+
+function looColor(nrmsePct: number) {
+  if (nrmsePct < 10) return 'text-green-700 bg-green-50 border-green-200'
+  if (nrmsePct <= 20) return 'text-amber-700 bg-amber-50 border-amber-200'
+  return 'text-red-700 bg-red-50 border-red-200'
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Phase5Page() {
@@ -124,6 +154,7 @@ export default function Phase5Page() {
   const [loaded,           setLoaded]           = useState(false)
   const [error,            setError]            = useState('')
   const [showAllRuns,      setShowAllRuns]      = useState(false)
+  const [modeCheck,        setModeCheck]        = useState<ModeCheckRow[] | null>(null)
   const [exclusionReasons, setExclusionReasons] = useState<Record<string, string>>({})
   const [selectedRunIndex, setSelectedRunIndex] = useState<number | null>(null)
   const [aiInterpretation, setAiInterpretation] = useState('')
@@ -185,6 +216,35 @@ export default function Phase5Page() {
     load()
   }, [projectId])
 
+  // ── Market Influence check ─────────────────────────────────────────────────
+  // Re-solves under the two alternate weighting settings (Balanced, Equal) in
+  // the background and shows the recommendations side by side. Display-only:
+  // active results always use the standard market-weighted setting.
+
+  async function runModeCheck(basePayload: any, baselineEstimates: number[]) {
+    try {
+      const [sqrtRes, equalRes] = await Promise.all(
+        ['sqrt_share', 'equal'].map(mode =>
+          fetch('/api/solver?endpoint=solve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...basePayload, run_sensitivity: false, run_loo: false, weight_mode: mode,
+            }),
+          }).then(r => r.json())
+        )
+      )
+      if (!sqrtRes.success || !equalRes.success) return
+      setModeCheck([
+        { label: 'Market-weighted', estimates: baselineEstimates },
+        { label: 'Balanced', estimates: (sqrtRes.target_results ?? []).map((tr: any) => tr.point_estimate) },
+        { label: 'Equal', estimates: (equalRes.target_results ?? []).map((tr: any) => tr.point_estimate) },
+      ])
+    } catch {
+      // Silent — the check is advisory
+    }
+  }
+
   // ── Auto-rehydrate solver result on return visit ──────────────────────────
 
   async function autoRunSolver(
@@ -245,22 +305,24 @@ export default function Phase5Page() {
         totalShare > 0 ? (b.market_share_pct ?? 0) / totalShare : 1 / includedBenches.length
       )
 
+      const solverPayload = {
+        attribute_ids:         factorData.map(f => f.id),
+        attribute_weights:     attributeWeights,
+        level_utilities:       levelUtilities,
+        attribute_levels:      attributeLevels,
+        benchmark_ids:         includedBenches.map(b => b.id),
+        benchmark_assignments: benchmarkAssignments,
+        market_prices:         includedBenches.map(b => b.market_price),
+        market_share_weights:  marketShareWeights,
+        target_ids:            targetData.map(t => t.id),
+        target_assignments:    targetAssignments,
+        run_sensitivity:       true,
+        run_loo:               true,
+      }
       const res = await fetch('/api/solver?endpoint=solve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          attribute_ids:         factorData.map(f => f.id),
-          attribute_weights:     attributeWeights,
-          level_utilities:       levelUtilities,
-          attribute_levels:      attributeLevels,
-          benchmark_ids:         includedBenches.map(b => b.id),
-          benchmark_assignments: benchmarkAssignments,
-          market_prices:         includedBenches.map(b => b.market_price),
-          market_share_weights:  marketShareWeights,
-          target_ids:            targetData.map(t => t.id),
-          target_assignments:    targetAssignments,
-          run_sensitivity:       true,
-        }),
+        body: JSON.stringify(solverPayload),
       })
       if (!res.ok) return
       const data = await res.json()
@@ -271,6 +333,9 @@ export default function Phase5Page() {
         name: targetData.find(t => t.id === tr.target_id)?.name ?? tr.target_id,
       }))
       setSolverResult({ ...data, target_results: targetResultsWithNames })
+
+      // Fire Market Influence check in background — non-blocking
+      runModeCheck(solverPayload, targetResultsWithNames.map(tr => tr.point_estimate))
 
       // Write solver results back to DB so Phase 6 always has current data.
       // Phase 2 wipes point_estimate/normalized_score when saving assignments,
@@ -315,6 +380,7 @@ export default function Phase5Page() {
     )
     setSolverResult(null)
     setAiInterpretation('')
+    setModeCheck(null)
   }
 
   // ── Run solver ────────────────────────────────────────────────────────────
@@ -396,22 +462,24 @@ export default function Phase5Page() {
       )
 
       // Call solver
+      const solverPayload = {
+        attribute_ids:         factors.map(f => f.id),
+        attribute_weights:     attributeWeights,
+        level_utilities:       levelUtilities,
+        attribute_levels:      attributeLevels,
+        benchmark_ids:         includedBenchmarks.map(b => b.id),
+        benchmark_assignments: benchmarkAssignments,
+        market_prices:         includedBenchmarks.map(b => b.market_price),
+        market_share_weights:  marketShareWeights,
+        target_ids:            targetProducts.map(t => t.id),
+        target_assignments:    targetAssignments,
+        run_sensitivity:       true,
+        run_loo:               true,
+      }
       const res = await fetch('/api/solver?endpoint=solve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          attribute_ids:         factors.map(f => f.id),
-          attribute_weights:     attributeWeights,
-          level_utilities:       levelUtilities,
-          attribute_levels:      attributeLevels,
-          benchmark_ids:         includedBenchmarks.map(b => b.id),
-          benchmark_assignments: benchmarkAssignments,
-          market_prices:         includedBenchmarks.map(b => b.market_price),
-          market_share_weights:  marketShareWeights,
-          target_ids:            targetProducts.map(t => t.id),
-          target_assignments:    targetAssignments,
-          run_sensitivity:       true,
-        }),
+        body: JSON.stringify(solverPayload),
       })
 
       if (!res.ok) {
@@ -440,6 +508,10 @@ export default function Phase5Page() {
       setSelectedRunIndex(null)
       setSolverResult({ ...data, target_results: targetResultsWithNames })
       setAiInterpretation('')
+      setModeCheck(null)
+
+      // Fire Market Influence check in background — non-blocking
+      runModeCheck(solverPayload, targetResultsWithNames.map(tr => tr.point_estimate))
 
       // Fire AI interpretation in background — non-blocking
       setAiInterpLoading(true)
@@ -818,7 +890,7 @@ export default function Phase5Page() {
             {/* Model fit */}
             <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-base font-semibold text-gray-900 mb-4">Model Fit</h2>
-              <div className="grid grid-cols-4 gap-4 mb-4">
+              <div className="grid grid-cols-5 gap-4 mb-4">
                 <div className="bg-gray-50 rounded-md p-3">
                   <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">Weighted R²
                     <HelpTip width="w-80" content="R² measures how well the model explains price differences across reference products. Above 0.85 is strong; 0.70–0.85 is acceptable; below 0.70 suggests the value framework may not fully capture what drives market pricing. NRMSE shows average prediction error as a % of mean price — below 10% is good." />
@@ -847,6 +919,21 @@ export default function Phase5Page() {
                   </div>
                   <div className="text-sm font-medium text-gray-800">{formatRse(solverResult.rse)}</div>
                 </div>
+                <div className="bg-gray-50 rounded-md p-3">
+                  <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">Predictive Error
+                    <HelpTip width="w-80" position="below" content="Average pricing error when each Reference Product is predicted by a model built without it. Fit metrics measure how well the model explains the products it was built on; Predictive Error measures how well it prices a product it has never seen — the more honest gauge of recommendation reliability, and typically higher than the fit error. Below 10% of average price is strong; above 20% means treat point estimates with caution." />
+                  </div>
+                  {solverResult.loo && !solverResult.loo.skipped ? (
+                    <>
+                      <div className={`inline-flex items-center px-2 py-1 rounded border text-sm font-medium ${looColor(solverResult.loo.loo_nrmse_pct ?? 0)}`}>
+                        {formatWholeDollars(solverResult.loo.loo_rmse ?? 0)}
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1">{(solverResult.loo.loo_nrmse_pct ?? 0).toFixed(1)}% of avg. price</div>
+                    </>
+                  ) : (
+                    <div className="text-xs text-gray-400">{solverResult.loo?.reason ?? 'Not computed'}</div>
+                  )}
+                </div>
               </div>
 
               {solverResult.near_equivalent_flag && (
@@ -862,6 +949,12 @@ export default function Phase5Page() {
               {solverResult.suspicious_b_high && (
                 <div className="mb-2 rounded-md px-4 py-3 text-sm bg-amber-50 border border-amber-200 text-amber-700">
                   ⚠ Model implies the worst possible product is more expensive than the most expensive reference product.
+                </div>
+              )}
+              {solverResult.loo && !solverResult.loo.skipped && (solverResult.loo.stability ?? 0) > 0.25 && (
+                <div className="mb-2 rounded-md px-4 py-3 text-sm bg-amber-50 border border-amber-200 text-amber-700">
+                  ⚠ <strong>{includedBenchmarks[solverResult.loo.max_influence_index ?? 0]?.name ?? 'One reference product'}</strong> strongly
+                  influences the model — removing it would shift the calibration noticeably. Review its price and Performance Level assignments.
                 </div>
               )}
 
@@ -940,6 +1033,56 @@ export default function Phase5Page() {
                   </table>
                 </div>
               )}
+
+              {/* Market Influence check — advisory, display-only */}
+              {modeCheck && solverResult.target_results.length > 0 && (() => {
+                const spreads = solverResult.target_results.map((_, ti) => {
+                  const vals = modeCheck.map(r => r.estimates[ti]).filter(v => v != null && v > 0)
+                  if (vals.length < 3) return null
+                  const mid = (Math.max(...vals) + Math.min(...vals)) / 2
+                  return mid > 0 ? (Math.max(...vals) - Math.min(...vals)) / mid : null
+                })
+                const allRobust = spreads.every(s => s != null && s <= 0.05)
+                return (
+                  <div className="mt-4 border-t border-gray-100 pt-3">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <h3 className="text-xs font-semibold text-gray-600">Market Influence Check</h3>
+                      <HelpTip width="w-96" position="below" content="Re-runs the model under three Market Influence settings: Market-weighted (each Reference Product's influence follows its market share — the standard setting used for all results), Balanced (high-share products still count more, but less steeply), and Equal (every product counts the same). If the recommendations agree closely across settings, the result does not hinge on the market-share assumptions." />
+                    </div>
+                    <table className="text-xs border-separate border-spacing-0">
+                      <thead>
+                        <tr>
+                          <th className="text-left text-gray-500 pb-1.5 pr-6 border-b border-gray-100">Target</th>
+                          {modeCheck.map(r => (
+                            <th key={r.label} className="text-right text-gray-500 pb-1.5 pr-6 border-b border-gray-100">{r.label}</th>
+                          ))}
+                          <th className="text-right text-gray-500 pb-1.5 border-b border-gray-100">Spread</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {solverResult.target_results.map((tr, ti) => (
+                          <tr key={tr.target_id}>
+                            <td className="py-1.5 pr-6 text-gray-700">{tr.name}</td>
+                            {modeCheck.map(r => (
+                              <td key={r.label} className={`py-1.5 pr-6 text-right ${r.label === 'Market-weighted' ? 'font-medium text-gray-800' : 'text-gray-600'}`}>
+                                {r.estimates[ti] != null ? formatCurrency(r.estimates[ti]) : '—'}
+                              </td>
+                            ))}
+                            <td className={`py-1.5 text-right font-medium ${spreads[ti] != null && spreads[ti]! <= 0.05 ? 'text-green-700' : 'text-amber-700'}`}>
+                              {spreads[ti] != null ? `±${(spreads[ti]! * 50).toFixed(1)}%` : '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <div className={`mt-2 text-xs ${allRobust ? 'text-green-700' : 'text-amber-700'}`}>
+                      {allRobust
+                        ? '✓ Recommendation is robust to market weighting — all three settings agree within ±2.5%.'
+                        : 'Recommendations shift under different market weighting settings — the result leans on the market-share estimates. Review share values for the largest reference products.'}
+                    </div>
+                  </div>
+                )
+              })()}
             </section>
 
             {/* Post-solve diagnostics */}

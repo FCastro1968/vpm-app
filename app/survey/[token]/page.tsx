@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -136,6 +136,7 @@ export default function ExternalSurveyPage() {
   const [loaded,         setLoaded]         = useState(false)
   const [notFound,       setNotFound]       = useState(false)
   const [expired,        setExpired]        = useState(false)
+  const questionShownAt = useRef(Date.now())
 
   // ── Load ──────────────────────────────────────────────────────────────────
 
@@ -193,12 +194,13 @@ export default function ExternalSurveyPage() {
       const res = await fetch(`/api/survey/${token}`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ comparison_type: q.comparison_type, item_a_id: q.item_a_id, item_b_id: q.item_b_id, score, direction }),
+        body:    JSON.stringify({ comparison_type: q.comparison_type, item_a_id: q.item_a_id, item_b_id: q.item_b_id, score, direction, response_ms: Date.now() - questionShownAt.current }),
       })
       if (!res.ok) throw new Error('Failed to save response')
       setResponses(prev => ({ ...prev, [currentIndex]: { score, direction, slider: sliderPos } }))
       const clamped = Math.max(0, Math.min(targetIndex, questions.length - 1))
       setCurrentIndex(clamped)
+      questionShownAt.current = Date.now()
     } catch (err: any) {
       setError(err.message ?? 'Failed to save')
     } finally {
@@ -219,7 +221,7 @@ export default function ExternalSurveyPage() {
       await fetch(`/api/survey/${token}`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ comparison_type: q.comparison_type, item_a_id: q.item_a_id, item_b_id: q.item_b_id, score, direction }),
+        body:    JSON.stringify({ comparison_type: q.comparison_type, item_a_id: q.item_a_id, item_b_id: q.item_b_id, score, direction, response_ms: Date.now() - questionShownAt.current }),
       })
 
       const res = await fetch(`/api/survey/${token}`, { method: 'PATCH' })

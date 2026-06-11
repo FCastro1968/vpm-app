@@ -497,6 +497,7 @@ export default function Phase6Page() {
   const [showLabels, setShowLabels] = useState(false)
   const [categoryAnchor,     setCategoryAnchor]     = useState('')
   const [targetSegment,      setTargetSegment]      = useState('')
+  const [weightMode,         setWeightMode]         = useState<'market_share' | 'sqrt_share' | 'equal'>('market_share')
   const [aiNarrative,        setAiNarrative]        = useState('')
   const [aiNarrativeLoading, setAiNarrativeLoading] = useState(false)
   const [aiNarrativeError,   setAiNarrativeError]   = useState('')
@@ -523,6 +524,14 @@ export default function Phase6Page() {
         )
         setCategoryAnchor(projectData.category_anchor ?? '')
         setTargetSegment(projectData.target_segment ?? '')
+      }
+
+      // Market Influence setting — resilient separate query (column may not
+      // exist pre-migration); badge shown on Price Recommendations when non-default
+      const { data: wmData } = await supabase
+        .from('project').select('weight_mode').eq('id', projectId).single()
+      if (wmData?.weight_mode === 'sqrt_share' || wmData?.weight_mode === 'equal') {
+        setWeightMode(wmData.weight_mode)
       }
 
       // Regression result
@@ -1553,6 +1562,14 @@ export default function Phase6Page() {
         <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h2 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-1.5">Price Recommendations
             <HelpTip width="w-80" position="above" content="The point estimate is the model-implied price for this product based on its Value Index. The recommended range has two layers: the statistical range (±1 standard deviation of benchmark residuals) reflects normal pricing variability in this market; the wider market envelope spans the full observed high and low residuals. For repositioning products, the gap analysis shows how the current price compares to the recommended range." />
+            {weightMode !== 'market_share' && (
+              <span
+                className="ml-1 px-2 py-0.5 rounded border border-amber-200 bg-amber-50 text-amber-700 text-xs font-medium"
+                title="This project uses a non-standard Market Influence setting — set in the Value Pricing Model phase."
+              >
+                Market Influence: {weightMode === 'sqrt_share' ? 'Balanced' : 'Equal'}
+              </span>
+            )}
           </h2>
           <div className="space-y-4">
             {targets.map(t => (

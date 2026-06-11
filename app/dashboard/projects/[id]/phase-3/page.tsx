@@ -279,6 +279,7 @@ export default function Phase3Page() {
   const [respondentId,   setRespondentId]   = useState<string | null>(null)
   const [responses,      setResponses]      = useState<Record<number, SavedResponse>>({})
   const [currentIndex,   setCurrentIndex]   = useState(0)
+  const questionShownAt = useRef(Date.now())
   const [sliderPos,      setSliderPos]      = useState(EQUAL_POS)
   const [saving,         setSaving]         = useState(false)
   const [closing,        setClosing]        = useState(false)
@@ -475,15 +476,23 @@ export default function Phase3Page() {
         .eq('item_a_id', q.item_a_id)
         .eq('item_b_id', q.item_b_id)
 
-      const { error: insertErr } = await supabase.from('pairwise_response').insert({
+      const { error: insertErr, data: inserted } = await supabase.from('pairwise_response').insert({
         respondent_id:   respondentId,
         comparison_type: q.comparison_type,
         item_a_id:       q.item_a_id,
         item_b_id:       q.item_b_id,
         score,
         direction,
-      })
+      }).select('id').single()
       if (insertErr) console.error('INSERT ERROR:', JSON.stringify(insertErr), 'direction:', direction, 'score:', score)
+
+      // Response timing — separate resilient update so a missing response_ms
+      // column never breaks the survey flow. Capped at 1h to exclude idle tabs.
+      if (inserted) {
+        const elapsed = Math.min(Date.now() - questionShownAt.current, 3_600_000)
+        await supabase.from('pairwise_response').update({ response_ms: elapsed }).eq('id', inserted.id)
+      }
+      questionShownAt.current = Date.now()
 
       const newResponses = {
         ...responses,

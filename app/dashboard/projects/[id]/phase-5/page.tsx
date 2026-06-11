@@ -70,6 +70,14 @@ interface SolverResult {
   all_runs: any[]
 }
 
+type WeightMode = 'market_share' | 'sqrt_share' | 'equal'
+
+const WEIGHT_MODE_LABELS: Record<WeightMode, string> = {
+  market_share: 'Market-weighted',
+  sqrt_share:   'Balanced',
+  equal:        'Equal',
+}
+
 interface ModeCheckRow {
   label: string
   estimates: number[]
@@ -160,6 +168,7 @@ export default function Phase5Page() {
   const [aiInterpretation, setAiInterpretation] = useState('')
   const [aiInterpLoading,  setAiInterpLoading]  = useState(false)
   const [categoryAnchor,   setCategoryAnchor]   = useState('')
+  const [weightMode,       setWeightMode]       = useState<WeightMode>('market_share')
 
   // ── Load ──────────────────────────────────────────────────────────────────
 
@@ -171,6 +180,19 @@ export default function Phase5Page() {
         .eq('id', projectId)
         .single()
       if (projectData?.category_anchor) setCategoryAnchor(projectData.category_anchor)
+
+      // Market Influence setting — separate resilient query so a missing
+      // weight_mode column (pre-migration) can never break the page load
+      let mode: WeightMode = 'market_share'
+      const { data: wmData } = await supabase
+        .from('project')
+        .select('weight_mode')
+        .eq('id', projectId)
+        .single()
+      if (wmData?.weight_mode === 'sqrt_share' || wmData?.weight_mode === 'equal') {
+        mode = wmData.weight_mode
+      }
+      setWeightMode(mode)
 
       const { data: factorData } = await supabase
         .from('attribute')
@@ -207,7 +229,7 @@ export default function Phase5Page() {
         .maybeSingle()
 
       if (existingReg && factorData?.length && benchData?.length && targetData?.length) {
-        await autoRunSolver(factorData, benchData, targetData)
+        await autoRunSolver(factorData, benchData, targetData, mode)
       }
 
       setLoaded(true)
@@ -221,10 +243,12 @@ export default function Phase5Page() {
   // the background and shows the recommendations side by side. Display-only:
   // active results always use the standard market-weighted setting.
 
-  async function runModeCheck(basePayload: any, baselineEstimates: number[]) {
+  async function runModeCheck(basePayload: any, baselineEstimates: number[], activeMode: WeightMode) {
     try {
-      const [sqrtRes, equalRes] = await Promise.all(
-        ['sqrt_share', 'equal'].map(mode =>
+      const otherModes = (['market_share', 'sqrt_share', 'equal'] as WeightMode[])
+        .filter(m => m !== activeMode)
+      const results = await Promise.all(
+        otherModes.map(mode =>
           fetch('/api/solver?endpoint=solve', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -234,15 +258,30 @@ export default function Phase5Page() {
           }).then(r => r.json())
         )
       )
-      if (!sqrtRes.success || !equalRes.success) return
+      if (results.some(r => !r.success)) return
       setModeCheck([
-        { label: 'Market-weighted', estimates: baselineEstimates },
-        { label: 'Balanced', estimates: (sqrtRes.target_results ?? []).map((tr: any) => tr.point_estimate) },
-        { label: 'Equal', estimates: (equalRes.target_results ?? []).map((tr: any) => tr.point_estimate) },
+        { label: `${WEIGHT_MODE_LABELS[activeMode]} (active)`, estimates: baselineEstimates },
+        ...otherModes.map((m, i) => ({
+          label: WEIGHT_MODE_LABELS[m],
+          estimates: (results[i].target_results ?? []).map((tr: any) => tr.point_estimate),
+        })),
       ])
     } catch {
       // Silent — the check is advisory
     }
+  }
+
+  async function changeWeightMode(mode: WeightMode) {
+    if (mode === weightMode) return
+    setWeightMode(mode)
+    // Persist — resilient: if the weight_mode column is missing (pre-migration),
+    // the update fails silently and the setting stays session-only
+    await supabase.from('project').update({ weight_mode: mode }).eq('id', projectId)
+    // Changing the weighting basis invalidates current results — require re-run
+    setSolverResult(null)
+    setModeCheck(null)
+    setAiInterpretation('')
+    setSelectedRunIndex(null)
   }
 
   // ── Auto-rehydrate solver result on return visit ──────────────────────────
@@ -250,7 +289,8 @@ export default function Phase5Page() {
   async function autoRunSolver(
     factorData: Factor[],
     benchData: Benchmark[],
-    targetData: TargetProduct[]
+    targetData: TargetProduct[],
+    mode: WeightMode = 'market_share'
   ) {
     try {
       const includedBenches = benchData.filter(b => b.included_in_regression)
@@ -318,6 +358,7 @@ export default function Phase5Page() {
         target_assignments:    targetAssignments,
         run_sensitivity:       true,
         run_loo:               true,
+        weight_mode:           mode,
       }
       const res = await fetch('/api/solver?endpoint=solve', {
         method: 'POST',
@@ -335,7 +376,7 @@ export default function Phase5Page() {
       setSolverResult({ ...data, target_results: targetResultsWithNames })
 
       // Fire Market Influence check in background — non-blocking
-      runModeCheck(solverPayload, targetResultsWithNames.map(tr => tr.point_estimate))
+      runModeCheck(solverPayload, targetResultsWithNames.map(tr => tr.point_estimate), mode)
 
       // Write solver results back to DB so Phase 6 always has current data.
       // Phase 2 wipes point_estimate/normalized_score when saving assignments,
@@ -475,6 +516,7 @@ export default function Phase5Page() {
         target_assignments:    targetAssignments,
         run_sensitivity:       true,
         run_loo:               true,
+        weight_mode:           weightMode,
       }
       const res = await fetch('/api/solver?endpoint=solve', {
         method: 'POST',
@@ -511,7 +553,7 @@ export default function Phase5Page() {
       setModeCheck(null)
 
       // Fire Market Influence check in background — non-blocking
-      runModeCheck(solverPayload, targetResultsWithNames.map(tr => tr.point_estimate))
+      runModeCheck(solverPayload, targetResultsWithNames.map(tr => tr.point_estimate), weightMode)
 
       // Fire AI interpretation in background — non-blocking
       setAiInterpLoading(true)
@@ -874,7 +916,29 @@ export default function Phase5Page() {
           >
             {running ? 'Running model…' : solverResult ? '↺ Re-run Model' : 'Run Model'}
           </button>
-          {running && <span className="text-xs text-gray-400">Running 8 solver instances…</span>}
+          {running && <span className="text-xs text-gray-400">This usually takes a few seconds…</span>}
+
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-xs text-gray-500 flex items-center gap-1">Market Influence
+              <HelpTip width="w-80" position="below" content="Controls how strongly each Reference Product's market presence influences the model. Market-weighted (standard): influence follows market share. Balanced: high-share products still count more, but less steeply. Equal: every included product counts the same. Changing this setting clears current results and requires a re-run; the active setting is saved with the project and labeled on outputs." />
+            </span>
+            <div className="flex rounded-md border border-gray-200 overflow-hidden">
+              {(Object.keys(WEIGHT_MODE_LABELS) as WeightMode[]).map(m => (
+                <button
+                  key={m}
+                  onClick={() => changeWeightMode(m)}
+                  disabled={running}
+                  className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                    weightMode === m
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {WEIGHT_MODE_LABELS[m]}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Error */}
@@ -1063,8 +1127,8 @@ export default function Phase5Page() {
                         {solverResult.target_results.map((tr, ti) => (
                           <tr key={tr.target_id}>
                             <td className="py-1.5 pr-6 text-gray-700">{tr.name}</td>
-                            {modeCheck.map(r => (
-                              <td key={r.label} className={`py-1.5 pr-6 text-right ${r.label === 'Market-weighted' ? 'font-medium text-gray-800' : 'text-gray-600'}`}>
+                            {modeCheck.map((r, ri) => (
+                              <td key={r.label} className={`py-1.5 pr-6 text-right ${ri === 0 ? 'font-medium text-gray-800' : 'text-gray-600'}`}>
                                 {r.estimates[ti] != null ? formatCurrency(r.estimates[ti]) : '—'}
                               </td>
                             ))}

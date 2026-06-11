@@ -96,7 +96,7 @@ export async function POST(request: NextRequest, { params }: { params: Params })
     return NextResponse.json({ error: 'Survey already submitted' }, { status: 403 })
   }
 
-  const { comparison_type, item_a_id, item_b_id, score, direction } = await request.json()
+  const { comparison_type, item_a_id, item_b_id, score, direction, response_ms } = await request.json()
 
   // Start the clock on first response save (Q1 → Q2 transition).
   // Check survey_started_at separately so a missing column never breaks the survey.
@@ -121,16 +121,26 @@ export async function POST(request: NextRequest, { params }: { params: Params })
     .eq('item_a_id', item_a_id)
     .eq('item_b_id', item_b_id)
 
-  const { error } = await supabase.from('pairwise_response').insert({
+  const { error, data: inserted } = await supabase.from('pairwise_response').insert({
     respondent_id:   respondent.id,
     comparison_type,
     item_a_id,
     item_b_id,
     score,
     direction,
-  })
+  }).select('id').single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Response timing — separate resilient update so a missing response_ms
+  // column never breaks the survey flow. Capped at 1h to exclude idle tabs.
+  if (inserted && typeof response_ms === 'number' && response_ms > 0) {
+    await supabase
+      .from('pairwise_response')
+      .update({ response_ms: Math.min(Math.round(response_ms), 3_600_000) })
+      .eq('id', inserted.id)
+  }
+
   return NextResponse.json({ ok: true })
 }
 

@@ -256,6 +256,7 @@ export default function Phase7Page() {
   const [targetAssignments, setTargetAssignments] = useState<Record<string, string>[]>([])
   const [targetBaselines,   setTargetBaselines]   = useState<Record<string, number>>({})
   const [loaded,            setLoaded]            = useState(false)
+  const [weightMode,        setWeightMode]        = useState<'market_share' | 'sqrt_share' | 'equal'>('market_share')
   const [loadError,         setLoadError]         = useState('')
 
   // ── Benchmark price sensitivity ────────────────────────────────────────────
@@ -375,6 +376,14 @@ export default function Phase7Page() {
           router.refresh()
         }
 
+        // Market Influence setting — resilient separate query (column may not
+        // exist pre-migration); all Phase 7 solves use the project's setting
+        const { data: wmData } = await supabase
+          .from('project').select('weight_mode').eq('id', projectId).single()
+        if (wmData?.weight_mode === 'sqrt_share' || wmData?.weight_mode === 'equal') {
+          setWeightMode(wmData.weight_mode)
+        }
+
       } catch (e: any) {
         setLoadError(e.message ?? 'Failed to load data')
       }
@@ -403,6 +412,7 @@ export default function Phase7Page() {
       market_share_weights:  marketShareWeights,
       target_ids:            targetProducts.map(t => t.id),
       target_assignments:    targetAssignments,
+      weight_mode:           weightMode,
     }
   }
 
@@ -635,6 +645,7 @@ export default function Phase7Page() {
               target_ids:            targetProducts.map(t => t.id),
               target_assignments:    targetAssignments,
               run_sensitivity:       false,
+              weight_mode:           weightMode,
             }),
           })
           const solveData = await solveRes.json()
